@@ -18,48 +18,92 @@ A modern, open-source video sharing platform built with Next.js 16, React 19, an
 - **Comments** — Threaded replies, edit/delete, moderation by video owners
 - **Likes** — Like videos with optimistic UI updates
 - **Watch History** — Automatic progress tracking with playback resume
-- **Playlists** — Public, private, and unlisted playlists + Watch Later
+- **Playlists** — Public, private, and unlisted playlists + Watch Later with drag reordering
+- **Tags** — Tag videos for discovery, browse videos by tag
 - **Search** — Full-text search across video titles, descriptions, and channel names
 - **Trending** — Time-decayed popularity ranking
 - **Creator Studio** — Dashboard for managing uploaded videos with stats
 - **Password Reset** — Secure token-based password reset via email
+- **Error Handling** — Graceful degradation with per-section error states
 - **Responsive Design** — Mobile-first layout with collapsible sidebar
 
 ### Technical Highlights
 
 - Qencode end-to-end video pipeline (S3 storage, transcoding, CDN delivery, player SDK)
 - HMAC-secured transcoding callbacks with timing-safe verification
+- Callback replay protection (timestamp-based HMAC, 5-minute window)
+- Security headers middleware (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Permissions-Policy)
+- Zod environment validation (fail-fast at startup with clear error messages)
 - Structured JSON logging with Pino
 - In-memory rate limiting (6 endpoint-specific limiters)
 - Multi-environment deployment (QA + Production)
 - CI/CD with GitHub Actions (secret scan, lint, typecheck, test, build, deploy)
 - Docker Compose for local development
-- 69 tests across 7 test files
+- 109 tests across 10 test files
 
 ## Architecture
 
 ```
-┌─────────┐    TUS Upload     ┌──────────────────────┐
-│ Browser  │ ────────────────→ │  Qencode S3 Storage  │
-└─────────┘                    └──────────┬───────────┘
-                                          │
-                               ┌──────────▼───────────┐
-                               │ Qencode Transcoding   │
-                               │ 1080p/720p/480p/360p  │
-                               │ + thumbnail            │
-                               └──────────┬───────────┘
-                                          │
-                               ┌──────────▼───────────┐
-                               │  HMAC Callback → API  │
-                               │  → PostgreSQL          │
-                               └──────────┬───────────┘
-                                          │
-┌─────────┐   Qencode Player  ┌──────────▼───────────┐
-│ Browser  │ ←──────────────── │    Qencode CDN       │
-└─────────┘                    └──────────────────────┘
+┌──────────┐                          ┌──────────────────────┐
+│  Browser  │ ── TUS Upload ────────→ │  Qencode S3 Storage  │
+│          │                          └──────────┬───────────┘
+│          │                                     │ transcode
+│          │                          ┌──────────▼───────────┐
+│          │                          │ Qencode Transcoding   │
+│          │                          │ 1080p/720p/480p/360p  │
+│          │                          │ + thumbnail            │
+│          │                          └──────────┬───────────┘
+│          │                                     │ HMAC callback
+│          │                          ┌──────────▼───────────┐
+│          │ ── API requests ───────→ │  Next.js API Layer    │
+│          │                          │  31 routes + middleware│
+│          │                          │  (rate limiting, CSP,  │
+│          │                          │   HSTS, auth)          │
+│          │                          └──────────┬───────────┘
+│          │                                     │
+│          │                          ┌──────────▼───────────┐
+│          │                          │  PostgreSQL (Prisma)  │
+│          │                          │  15 models, 3 enums   │
+│          │                          └──────────────────────┘
+│          │                                     │
+│          │   Qencode Player         ┌──────────▼───────────┐
+│          │ ←── HLS streaming ────── │    Qencode CDN       │
+└──────────┘                          └──────────────────────┘
 ```
 
-Videos are uploaded via the TUS resumable protocol directly to Qencode S3 storage. Qencode automatically transcodes each upload into four adaptive bitrate streams plus a thumbnail. On completion, a HMAC-signed callback updates the video record in PostgreSQL with the HLS, DASH, and MP4 URLs. The Qencode Player SDK delivers adaptive streaming to viewers via CDN.
+Videos are uploaded via the TUS resumable protocol directly to Qencode S3 storage. Qencode automatically transcodes each upload into four adaptive bitrate streams plus a thumbnail. On completion, a HMAC-signed callback (with timestamp-based replay protection) updates the video record in PostgreSQL with the HLS, DASH, and MP4 URLs. All API responses pass through the security headers middleware. The Qencode Player SDK delivers adaptive streaming to viewers via CDN.
+
+## Architecture Decisions
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Session strategy | JWT (not DB sessions) | Stateless, serverless-friendly, no DB lookup per request |
+| Rate limiting | In-memory (not Redis) | Zero dependencies for MVP; Redis upgrade path in `rate-limit.ts` |
+| Video infrastructure | Qencode (single vendor) | Storage + transcoding + CDN + player — fewer moving parts |
+| Pagination | Cursor-based (not offset) | Consistent results on large datasets, efficient with Prisma |
+| Components | Server Components default | Less client JS; Client Components only for interactivity |
+| Validation | Zod v4 (not v3) | Better error types (`.issues`), `z.ZodType` generics |
+| Route params | `Promise<{}>` (Next.js 16) | Breaking change — all params must be `await`ed |
+| Callback security | HMAC + timestamp | Prevents replay attacks; 5-minute window |
+
+## Video Processing Lifecycle
+
+```
+  ┌────────────┐      ┌─────────────┐      ┌───────┐
+  │  UPLOADING │ ───→ │ PROCESSING  │ ───→ │ READY │
+  └────────────┘      └──────┬──────┘      └───────┘
+                             │
+                             └──────────→ ┌────────┐
+                                          │ FAILED │
+                                          └────────┘
+```
+
+| Status | Description |
+|--------|-------------|
+| **UPLOADING** | TUS resumable upload in progress to Qencode S3 |
+| **PROCESSING** | Qencode transcoding job is running (HLS + thumbnail generation) |
+| **READY** | Callback received with `status: completed`. HLS/thumbnail URLs stored. Subscribers notified. |
+| **FAILED** | Callback received with error, or transcoding timed out. Video marked as failed. |
 
 ## Tech Stack
 
@@ -153,6 +197,108 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `make build` | Production build |
 | `make docker-up` | Full Docker stack (db + app) |
 
+## API Reference
+
+### Auth (4 routes)
+
+| Endpoint | Methods | Auth | Description |
+|----------|---------|------|-------------|
+| `/api/auth/[...nextauth]` | GET, POST | — | NextAuth handler (login, session, OAuth) |
+| `/api/auth/register` | POST | — | User registration with email/password |
+| `/api/auth/forgot-password` | POST | — | Send password reset email |
+| `/api/auth/reset-password` | POST | — | Reset password with token |
+
+### Videos (7 routes)
+
+| Endpoint | Methods | Auth | Description |
+|----------|---------|------|-------------|
+| `/api/videos` | GET | — | List ready videos (cursor-paginated) |
+| `/api/videos/[videoId]` | GET, PUT, DELETE | PUT/DELETE: owner | Video details, update, or delete |
+| `/api/videos/[videoId]/like` | POST | Required | Toggle like on video |
+| `/api/videos/[videoId]/comments` | GET, POST | POST: required | List or create comments |
+| `/api/videos/[videoId]/comments/[commentId]` | PATCH, DELETE | Owner | Edit or delete comment |
+| `/api/videos/[videoId]/tags` | POST | Owner | Add tag to video (max 10) |
+| `/api/videos/[videoId]/tags/[tagId]` | DELETE | Owner | Remove tag from video |
+
+### Tags (2 routes)
+
+| Endpoint | Methods | Auth | Description |
+|----------|---------|------|-------------|
+| `/api/tags` | GET | — | Search/list tags with video counts |
+| `/api/tags/[tagName]/videos` | GET | — | Browse ready videos by tag |
+
+### Channels (1 route)
+
+| Endpoint | Methods | Auth | Description |
+|----------|---------|------|-------------|
+| `/api/channels/[channelId]` | GET, PUT | PUT: owner | Channel details or update profile |
+
+### Subscriptions (2 routes)
+
+| Endpoint | Methods | Auth | Description |
+|----------|---------|------|-------------|
+| `/api/subscriptions/[channelId]` | GET, POST | POST: required | Check or toggle subscription |
+| `/api/subscriptions/feed` | GET | Required | Videos from subscribed channels |
+
+### Playlists (5 routes)
+
+| Endpoint | Methods | Auth | Description |
+|----------|---------|------|-------------|
+| `/api/playlists` | GET, POST | Required | List or create playlists |
+| `/api/playlists/[playlistId]` | GET, PUT, DELETE | Owner | Playlist details, update, or delete |
+| `/api/playlists/[playlistId]/items` | POST, DELETE | Owner | Add/remove video from playlist |
+| `/api/playlists/[playlistId]/items/reorder` | PATCH | Owner | Reorder playlist items |
+| `/api/playlists/watch-later` | GET, POST | Required | Watch Later playlist |
+
+### Notifications (3 routes)
+
+| Endpoint | Methods | Auth | Description |
+|----------|---------|------|-------------|
+| `/api/notifications` | GET, PATCH | Required | List notifications or mark all read |
+| `/api/notifications/[notificationId]` | PATCH | Owner | Mark single notification read |
+| `/api/notifications/unread-count` | GET | Required | Unread notification count |
+
+### History (1 route)
+
+| Endpoint | Methods | Auth | Description |
+|----------|---------|------|-------------|
+| `/api/history` | POST, DELETE | Required | Record watch progress or clear history |
+
+### Upload (4 routes)
+
+| Endpoint | Methods | Auth | Description |
+|----------|---------|------|-------------|
+| `/api/upload/initiate` | POST | Required | Create Qencode task + TUS upload URI |
+| `/api/upload/start-transcode` | POST | Required | Start transcoding after upload completes |
+| `/api/upload/callback` | POST | HMAC | Qencode webhook (HMAC-signed) |
+| `/api/upload/status/[taskToken]` | GET | Required | Check transcoding status |
+
+### Search (1 route)
+
+| Endpoint | Methods | Auth | Description |
+|----------|---------|------|-------------|
+| `/api/search` | GET | — | Full-text search across videos and channels |
+
+### Health (1 route)
+
+| Endpoint | Methods | Auth | Description |
+|----------|---------|------|-------------|
+| `/api/health` | GET | — | Health check (DB connectivity) |
+
+## Database Schema
+
+```
+User ─1:1─ Channel ─1:N─ Video ─1:N─ Comment
+                              ├─ N:M ─ Tag (via VideoTag)
+                              ├─ 1:N ─ Like
+                              └─ 1:N ─ PlaylistItem ─ N:1 ─ Playlist
+User ─1:N─ Subscription ─ N:1 ─ Channel
+User ─1:N─ Notification
+User ─1:N─ WatchHistory ─ N:1 ─ Video
+```
+
+15 models, 3 enums (`VideoStatus`, `NotificationType`, `PlaylistVisibility`). All foreign keys cascade-delete from parent. See `prisma/schema.prisma` for full schema with doc comments.
+
 ## Project Structure
 
 ```
@@ -165,21 +311,23 @@ awetube/
 │   └── deploy.yml                # CD: deploy to QA or Production
 ├── prisma/
 │   ├── migrations/               # Database migrations
-│   ├── schema.prisma             # 13 models, 3 enums
+│   ├── schema.prisma             # 15 models, 3 enums
 │   └── seed.ts                   # Demo data seeder
 ├── src/
 │   ├── app/                      # Next.js App Router
 │   │   ├── (auth)/               #   Login, register, password reset
-│   │   ├── api/                  #   30+ API routes
+│   │   ├── api/                  #   31 API routes (see API Reference)
 │   │   │   ├── health/           #   Health check endpoint
 │   │   │   ├── upload/           #   TUS upload + Qencode integration
-│   │   │   ├── videos/           #   Video CRUD + comments + likes
-│   │   │   └── ...               #   Auth, channels, playlists, etc.
+│   │   │   ├── videos/           #   Video CRUD + comments + likes + tags
+│   │   │   ├── tags/             #   Tag search + browse by tag
+│   │   │   ├── playlists/        #   Playlist CRUD + reorder
+│   │   │   └── ...               #   Auth, channels, notifications, etc.
 │   │   ├── studio/               #   Creator studio
 │   │   ├── watch/                #   Video player page
 │   │   └── ...                   #   Search, history, library, etc.
 │   ├── components/
-│   │   ├── ui/                   # shadcn/ui components
+│   │   ├── ui/                   # shadcn/ui components + ErrorState
 │   │   ├── video/                # Qencode Player, VideoCard, VideoGrid
 │   │   └── ...                   # Layout, comments, playlists, etc.
 │   ├── lib/
@@ -193,15 +341,23 @@ awetube/
 │   │   ├── callback-signature.ts # HMAC signing & verification
 │   │   ├── logger.ts             # Pino structured logging
 │   │   ├── auth.ts               # NextAuth configuration
-│   │   └── db.ts                 # Prisma client singleton
+│   │   ├── db.ts                 # Prisma client singleton
+│   │   ├── env.ts                # Zod environment validation
+│   │   ├── notifications.ts      # Notification dispatch helpers
+│   │   └── channel-utils.ts      # Channel handle generation
+│   ├── middleware.ts              # Security headers (CSP, HSTS, etc.)
 │   ├── types/                    # TypeScript type definitions
-│   └── __tests__/                # 7 test files, 69 tests
+│   │   └── next-auth.d.ts        #   NextAuth JWT/session augmentation
+│   └── __tests__/                # 10 test files, 109 tests
+│       ├── setup.ts              #   Global mocks (Prisma, auth, Qencode)
+│       ├── api/                  #   API route tests
+│       └── lib/                  #   Library module tests
 ├── Dockerfile                    # Multi-stage production build
 ├── docker-compose.yml            # PostgreSQL + migrations + app
 ├── Makefile                      # Developer commands
 ├── DEPLOYMENT.md                 # Detailed deployment guide
-├── CONTRIBUTING.md               # Development workflow
-└── SECURITY.md                   # Vulnerability reporting
+├── CONTRIBUTING.md               # Development workflow + testing guide
+└── SECURITY.md                   # Vulnerability reporting + security measures
 ```
 
 ## Scripts
@@ -211,7 +367,7 @@ awetube/
 | `npm run dev` | `make dev` | Start development server |
 | `npm run build` | `make build` | Build for production |
 | `npm start` | — | Start production server |
-| `npm test` | `make test` | Run tests |
+| `npm test` | `make test` | Run 109 tests |
 | `npm run test:watch` | — | Run tests in watch mode |
 | `npm run test:coverage` | — | Run tests with coverage |
 | `npm run lint` | `make lint` | Lint code with ESLint |
@@ -236,7 +392,7 @@ For setup instructions, environment configuration, DNS, and troubleshooting, see
 
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and commit conventions.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, testing guide, and commit conventions.
 
 ## Security
 

@@ -1,3 +1,14 @@
+/**
+ * Request validation helpers for API routes.
+ *
+ * Every route uses these instead of manual Zod parsing to ensure consistent
+ * 400-error format across all endpoints. Returns a discriminated union:
+ * { success: true, data } or { success: false, response }.
+ *
+ * Usage:
+ *   const parsed = parseBody(mySchema, await req.json());
+ *   if (!parsed.success) return parsed.response;
+ */
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 

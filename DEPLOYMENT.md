@@ -38,6 +38,8 @@ feature/xyz ──PR──→ develop ──auto-deploy──→ qa.awetube.ai
                      └────────────────────┘
 ```
 
+All responses pass through the security headers middleware (`src/middleware.ts`) which sets CSP, HSTS, X-Frame-Options, and other security headers on every non-static request.
+
 ## Prerequisites
 
 - [DigitalOcean account](https://digitalocean.com) with billing set up
@@ -63,6 +65,8 @@ echo "QA CALLBACK_SIGNING_SECRET:"; openssl rand -base64 32
 echo "PROD NEXTAUTH_SECRET:"; openssl rand -base64 32
 echo "PROD CALLBACK_SIGNING_SECRET:"; openssl rand -base64 32
 ```
+
+`CALLBACK_SIGNING_SECRET` is used for HMAC-SHA256 callback signing with timestamp-based replay protection (5-minute window). See `src/lib/callback-signature.ts`.
 
 ### 2. Configure GitHub Secrets
 
@@ -212,6 +216,10 @@ Common causes: missing runtime env vars (`NEXTAUTH_SECRET`, `DATABASE_URL`).
 doctl apps logs <app-id> --type=run | grep -i prisma
 ```
 The `run_command` runs `prisma migrate deploy` before starting the server. If it fails, the deployment is rolled back.
+
+### Environment validation fails on startup
+
+`src/lib/env.ts` validates all required environment variables with Zod at startup. If any are missing or malformed, the app fails fast with an error message listing exactly which variables need to be set. Check `doctl apps logs <app-id> --type=run` for the specific validation error.
 
 ### Health check fails
 ```bash

@@ -1,3 +1,15 @@
+/**
+ * Global test setup (runs before every test file via vitest.config.ts).
+ *
+ * Provides three global mocks:
+ *   1. Prisma (db) — every model method is vi.fn(). Use `db as any` to access.
+ *      $transaction handles both callback and array patterns.
+ *   2. Auth — defaults to unauthenticated (null). Override per-test with:
+ *      (auth as any).mockResolvedValueOnce({ user: { id: "..." } })
+ *   3. Qencode client — mocks createTask, startEncode, getStatus.
+ *
+ * Environment variables are set to test values (never real credentials).
+ */
 import { vi } from "vitest";
 
 // Mock environment variables

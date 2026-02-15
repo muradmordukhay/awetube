@@ -1,3 +1,11 @@
+/**
+ * Notification dispatch helpers.
+ *
+ * Called fire-and-forget from API routes (.catch(() => {})) so notification
+ * failures never block the primary response.
+ *   - NEW_VIDEO: sent to all channel subscribers when a video becomes READY
+ *   - COMMENT_REPLY: sent to parent comment author (unless replying to self)
+ */
 import { db } from "@/lib/db";
 
 export async function notifySubscribersOfNewVideo(

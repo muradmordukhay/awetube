@@ -1,3 +1,13 @@
+/**
+ * Qencode API client singleton.
+ *
+ * Handles authentication (access token with 5-min-early refresh), task
+ * creation, encoding start, and status polling. Uses globalThis singleton
+ * pattern (same as db.ts).
+ *
+ * Used by: upload/initiate (createTask), upload/start-transcode (startEncode),
+ *          upload/status/[taskToken] (getStatus)
+ */
 import type {
   QencodeAccessTokenResponse,
   QencodeCreateTaskResponse,
