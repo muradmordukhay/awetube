@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
-import { Video, Upload, Eye } from "lucide-react";
+import { Video, Upload, Eye, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default async function StudioPage() {
@@ -57,9 +57,17 @@ export default async function StudioPage() {
         </div>
       </div>
 
-      <Button variant="outline" asChild>
-        <Link href="/studio/videos">Manage videos</Link>
-      </Button>
+      <div className="flex gap-3">
+        <Button variant="outline" asChild>
+          <Link href="/studio/videos">Manage videos</Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href="/studio/costs">
+            <Calculator className="mr-2 h-4 w-4" />
+            Cost calculator
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }
