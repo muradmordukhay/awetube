@@ -1,3 +1,11 @@
+/**
+ * Channel handle generation.
+ *
+ * Creates URL-safe handles from display names (lowercase alphanumeric, max 20 chars).
+ * Appends incrementing counter if taken (e.g., "johndoe", "johndoe1", "johndoe2").
+ *
+ * Called during: OAuth first sign-in and user registration.
+ */
 import { db } from "@/lib/db";
 
 export async function generateUniqueHandle(name: string): Promise<string> {

@@ -1,3 +1,18 @@
+/**
+ * NextAuth v5 configuration.
+ *
+ * Strategy: JWT (not database sessions) — stateless, serverless-friendly,
+ * no DB lookup per request.
+ *
+ * Providers: Credentials (email + bcrypt), Google OAuth, GitHub OAuth.
+ *
+ * Key behaviors:
+ *   - OAuth users get a Channel auto-created on first sign-in
+ *   - JWT token carries user.id, channelId, channelHandle
+ *   - Session exposes channelId/channelHandle for client-side routing
+ *
+ * Type augmentations: src/types/next-auth.d.ts
+ */
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";

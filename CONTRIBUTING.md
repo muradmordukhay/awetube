@@ -35,6 +35,54 @@ Thank you for your interest in contributing to AweTube! This guide will help you
 - **Tailwind CSS** — Used for all styling. Follow existing component patterns.
 - **Zod v4** — Used for all input validation. Schemas live in `src/lib/validation.ts`. Note: Zod v4 uses `.issues` (not `.errors`).
 - **API Routes** — Use `parseBody`/`parseSearchParams` from `src/lib/api-utils.ts` for request validation.
+- **Logger** — Import `logger` from `@/lib/logger` in all API routes. Use `logger.error({ err, context }, "message")`. Never use `console.log`.
+- **Route Params** — Next.js 16 params are `Promise<{}>`. Always destructure with `const { id } = await params;`.
+- **Error Handling** — Every API route wraps its body in `try/catch` with `logger.error` + a 500 JSON response.
+
+## Testing Guide
+
+### Running tests
+
+```bash
+npm test              # Run all 109 tests
+npm run test:watch    # Watch mode
+npm run test:coverage # Coverage report
+```
+
+### Test structure
+
+- Tests live in `src/__tests__/` mirroring the source tree
+- Global setup: `src/__tests__/setup.ts` — mocks Prisma, auth, and Qencode
+- Config: `vitest.config.ts` — uses `@/` path alias, node environment
+
+### Key patterns
+
+**1. Mock Prisma with `db as any`** — Prisma types are too complex for `vi.mock`. Cast the mock:
+
+```typescript
+import { db } from "@/lib/db";
+const mockDb = db as any;
+mockDb.video.findUnique.mockResolvedValueOnce({ id: "v1", title: "Test" });
+```
+
+**2. Mock auth for authenticated requests:**
+
+```typescript
+import { auth } from "@/lib/auth";
+const mockAuth = auth as any;
+mockAuth.mockResolvedValueOnce({ user: { id: "user-1" } });
+```
+
+**3. Route params are Promises** (Next.js 16):
+
+```typescript
+const params = Promise.resolve({ videoId: "video-123" });
+const res = await GET(req, { params });
+```
+
+**4. Helper functions** — Create `makeGetRequest`/`makePostRequest` helpers at the top of each test file. See `src/__tests__/api/tags.test.ts` for the pattern.
+
+**5. Test grouping** — Use `describe("METHOD /api/path", () => { ... })`. Cover: auth (401), validation (400), ownership (403), not-found (404), and success cases.
 
 ## Commit Convention
 

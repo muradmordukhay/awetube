@@ -7,6 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// Core user account. Optional password (null for OAuth-only users).
+/// One-to-one with Channel (auto-created on first sign-in or registration).
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -72,6 +74,9 @@ model Channel {
   subscribers Subscription[]
 }
 
+/// Video with Qencode integration fields.
+/// Status lifecycle: UPLOADING → READY | FAILED.
+/// hlsUrl, thumbnailUrl, etc. are null until the callback marks it READY.
 model Video {
   id          String      @id @default(cuid())
   channelId   String
@@ -157,6 +162,9 @@ model Tag {
   videos VideoTag[]
 }
 
+/// Video ↔ Tag many-to-many join table.
+/// Composite PK (videoId, tagId) prevents duplicates.
+/// Tags are upserted (create-if-not-exists) when added to a video.
 model VideoTag {
   videoId String
   tagId   String
@@ -200,6 +208,9 @@ enum NotificationType {
   COMMENT_REPLY
 }
 
+/// Two dual relations to User: "notifications" (recipient) and
+/// "notificationActor" (trigger). Uses SetNull on delete so notifications
+/// survive source entity deletion.
 model Notification {
   id        String           @id @default(cuid())
   userId    String
@@ -240,6 +251,8 @@ model Playlist {
   @@index([userId, createdAt])
 }
 
+/// Playlist ↔ Video join table with explicit ordering.
+/// The `position` field enables reordering via the PATCH reorder endpoint.
 model PlaylistItem {
   id         String   @id @default(cuid())
   playlistId String

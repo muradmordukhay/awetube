@@ -1,3 +1,13 @@
+/**
+ * Security headers middleware.
+ *
+ * Applied to every non-static request. Defends against XSS, clickjacking,
+ * MIME sniffing, and protocol downgrade attacks.
+ *
+ * CSP uses 'unsafe-inline'/'unsafe-eval' because Next.js injects inline
+ * scripts during hydration. Nonce-based CSP is a future follow-up.
+ * img-src/media-src allowlist Qencode CDN, AWS, and Google/GitHub avatars.
+ */
 import { NextRequest, NextResponse } from "next/server";
 
 const CSP = [

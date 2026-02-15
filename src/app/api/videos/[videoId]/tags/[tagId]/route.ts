@@ -10,7 +10,7 @@ export async function DELETE(
 ) {
   try {
     const ip = getClientIp(_req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const session = await auth();
