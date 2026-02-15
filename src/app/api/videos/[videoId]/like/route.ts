@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   _req: NextRequest,
@@ -48,7 +49,7 @@ export async function POST(
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Error toggling like:", error);
+    logger.error({ err: error }, "Error toggling like");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

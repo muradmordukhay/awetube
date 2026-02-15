@@ -5,6 +5,7 @@ import { qencode } from "@/lib/qencode/client";
 import { uploadInitiateSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
 import { uploadLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
       taskToken: task.task_token,
     });
   } catch (error) {
-    console.error("Upload initiate error:", error);
+    logger.error({ err: error }, "Upload initiate error");
     return NextResponse.json(
       { error: "Failed to initiate upload" },
       { status: 500 }

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { videoUpdateSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _req: NextRequest,
@@ -46,7 +47,7 @@ export async function GET(
 
     return NextResponse.json(video);
   } catch (error) {
-    console.error("Error fetching video:", error);
+    logger.error({ err: error }, "Error fetching video");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -96,7 +97,7 @@ export async function PUT(
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("Error updating video:", error);
+    logger.error({ err: error }, "Error updating video");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -137,7 +138,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting video:", error);
+    logger.error({ err: error }, "Error deleting video");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

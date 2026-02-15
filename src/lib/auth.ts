@@ -105,10 +105,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session.user as any).channelId = token.channelId ?? null;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session.user as any).channelHandle = token.channelHandle ?? null;
+        session.user.channelId = (token.channelId as string | null) ?? null;
+        session.user.channelHandle =
+          (token.channelHandle as string | null) ?? null;
       }
       return session;
     },

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { paginationSchema } from "@/lib/validation";
 import { parseSearchParams } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
       hasMore,
     });
   } catch (error) {
-    console.error("Error fetching videos:", error);
+    logger.error({ err: error }, "Error fetching videos");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

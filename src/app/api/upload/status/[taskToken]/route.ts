@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { qencode } from "@/lib/qencode/client";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   req: NextRequest,
@@ -46,7 +47,7 @@ export async function GET(
       error: taskStatus.error_description || null,
     });
   } catch (error) {
-    console.error("Status check error:", error);
+    logger.error({ err: error }, "Status check error");
     return NextResponse.json(
       { error: "Failed to check status" },
       { status: 500 }

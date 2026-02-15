@@ -7,6 +7,7 @@ import { startTranscodeSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
 import { signCallbackUrl } from "@/lib/callback-signature";
 import { uploadLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Start transcode error:", error);
+    logger.error({ err: error }, "Start transcode error");
     return NextResponse.json(
       { error: "Failed to start transcoding" },
       { status: 500 }

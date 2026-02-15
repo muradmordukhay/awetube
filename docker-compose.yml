@@ -27,7 +27,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["npx", "prisma", "db", "push", "--skip-generate"]
+    command: ["npx", "prisma", "migrate", "deploy"]
     restart: "no"
 
   app:

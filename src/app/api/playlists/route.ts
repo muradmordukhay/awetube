@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { playlistCreateSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // GET: list user's playlists
 export async function GET(req: NextRequest) {
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(playlists);
   } catch (error) {
-    console.error("Error listing playlists:", error);
+    logger.error({ err: error }, "Error listing playlists");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(playlist, { status: 201 });
   } catch (error) {
-    console.error("Error creating playlist:", error);
+    logger.error({ err: error }, "Error creating playlist");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

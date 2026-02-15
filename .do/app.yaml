@@ -1,0 +1,80 @@
+# DigitalOcean App Platform Specification
+# Docs: https://docs.digitalocean.com/products/app-platform/reference/app-spec/
+#
+# Initial creation: substitute secrets then run:
+#   envsubst < .do/app.yaml | doctl apps create --spec -
+#
+# Ongoing deploys are handled by .github/workflows/deploy.yml
+
+name: awetube
+region: nyc
+
+domains:
+  - domain: awetube.ai
+    type: PRIMARY
+
+services:
+  - name: web
+    github:
+      repo: muradmordukhay/awetube
+      branch: main
+      deploy_on_push: false
+    dockerfile_path: Dockerfile
+    http_port: 3000
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 15
+      period_seconds: 30
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    run_command: npx prisma migrate deploy && node server.js
+    envs:
+      # Build-time (NEXT_PUBLIC_* inlined by Next.js at build)
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://awetube.ai
+        type: GENERAL
+      - key: NEXT_PUBLIC_QENCODE_PLAYER_LICENSE
+        value: "${NEXT_PUBLIC_QENCODE_PLAYER_LICENSE}"
+        type: GENERAL
+      # Database (injected from managed DB component)
+      - key: DATABASE_URL
+        value: "${db.DATABASE_URL}"
+        type: SECRET
+      # Auth
+      - key: NEXTAUTH_SECRET
+        value: "${NEXTAUTH_SECRET}"
+        type: SECRET
+      - key: NEXTAUTH_URL
+        value: https://awetube.ai
+        type: GENERAL
+      # Security
+      - key: CALLBACK_SIGNING_SECRET
+        value: "${CALLBACK_SIGNING_SECRET}"
+        type: SECRET
+      # Qencode
+      - key: QENCODE_API_KEY
+        value: "${QENCODE_API_KEY}"
+        type: SECRET
+      - key: QENCODE_API_ENDPOINT
+        value: https://api.qencode.com
+        type: GENERAL
+      - key: QENCODE_S3_BUCKET
+        value: "${QENCODE_S3_BUCKET}"
+        type: GENERAL
+      - key: QENCODE_S3_REGION
+        value: us-west
+        type: GENERAL
+      # Email (optional)
+      - key: RESEND_API_KEY
+        value: "${RESEND_API_KEY}"
+        type: SECRET
+
+databases:
+  - name: db
+    engine: PG
+    version: "16"
+    size: db-s-1vcpu-1gb
+    num_nodes: 1

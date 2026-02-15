@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { paginationSchema } from "@/lib/validation";
 import { parseSearchParams } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
       hasMore,
     });
   } catch (error) {
-    console.error("Error fetching subscription feed:", error);
+    logger.error({ err: error }, "Error fetching subscription feed");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { watchLaterToggleSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 const WATCH_LATER_TITLE = "Watch Later";
 
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(withCount);
   } catch (error) {
-    console.error("Error fetching Watch Later:", error);
+    logger.error({ err: error }, "Error fetching Watch Later");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ saved: true });
   } catch (error) {
-    console.error("Error toggling Watch Later:", error);
+    logger.error({ err: error }, "Error toggling Watch Later");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

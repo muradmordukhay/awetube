@@ -1,9 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
-import Hls from "hls.js";
-import PlayerControls from "./PlayerControls";
-import useKeyboardShortcuts from "./useKeyboardShortcuts";
+import { useEffect, useRef } from "react";
 import usePlaybackProgress from "./usePlaybackProgress";
 
 interface VideoPlayerProps {
@@ -19,88 +16,93 @@ export default function VideoPlayerWrapper({
   hlsUrl,
   mp4Url,
   thumbnailUrl,
+  // TODO: Pass subtitlesUrl to Qencode player when subtitle support is configured
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   subtitlesUrl,
   videoId,
   initialProgress = 0,
 }: VideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsRef = useRef<Hls | null>(null);
+  const playerRef = useRef<QencodePlayerInstance | null>(null);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
 
-  // Initialize HLS or native playback
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
     const src = hlsUrl || mp4Url;
-    if (!src) return;
+    if (!src || !containerRef.current) return;
 
-    // HLS playback
-    if (hlsUrl && Hls.isSupported()) {
-      const hlsInstance = new Hls({
-        enableWorker: true,
-        startLevel: -1, // auto quality
+    const playerId = `qencode-player-${videoId || "default"}`;
+    containerRef.current.id = playerId;
+
+    function initPlayer(id: string, source: string) {
+      if (typeof window.qPlayer === "undefined") return;
+
+      playerRef.current = window.qPlayer(id, {
+        licenseKey: process.env.NEXT_PUBLIC_QENCODE_PLAYER_LICENSE || "",
+        videoSources: { src: source },
+        ...(thumbnailUrl ? { poster: thumbnailUrl } : {}),
       });
-      hlsInstance.loadSource(hlsUrl);
-      hlsInstance.attachMedia(video);
-      hlsRef.current = hlsInstance;
 
-      return () => {
-        hlsInstance.destroy();
-        hlsRef.current = null;
+      // Get underlying video element for progress tracking
+      // Qencode player renders a <video> element inside the container
+      const checkForVideo = () => {
+        const videoEl = containerRef.current?.querySelector("video");
+        if (videoEl) {
+          videoElementRef.current = videoEl as HTMLVideoElement;
+        }
       };
+
+      // The player may render the video element asynchronously
+      checkForVideo();
+      if (!videoElementRef.current) {
+        const observer = new MutationObserver(() => {
+          checkForVideo();
+          if (videoElementRef.current) observer.disconnect();
+        });
+        if (containerRef.current) {
+          observer.observe(containerRef.current, {
+            childList: true,
+            subtree: true,
+          });
+        }
+        // Clean up observer after 5s in case video never appears
+        setTimeout(() => observer.disconnect(), 5000);
+      }
     }
 
-    // Native HLS (Safari) or mp4 fallback
-    if (hlsUrl && video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = hlsUrl;
-    } else if (mp4Url) {
-      video.src = mp4Url;
-    }
-  }, [hlsUrl, mp4Url]);
+    // Load Qencode player script if not already loaded
+    const scriptId = "qencode-player-script";
+    const existingScript = document.getElementById(scriptId);
 
-  // Playback progress saving
+    if (!existingScript) {
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://player.qencode.com/qencode-bootstrapper.min.js";
+      script.async = true;
+      script.onload = () => initPlayer(playerId, src);
+      document.head.appendChild(script);
+    } else if (typeof window.qPlayer !== "undefined") {
+      initPlayer(playerId, src);
+    } else {
+      // Script exists but hasn't loaded yet — wait for it
+      existingScript.addEventListener("load", () =>
+        initPlayer(playerId, src)
+      );
+    }
+
+    return () => {
+      if (playerRef.current?.destroy) {
+        playerRef.current.destroy();
+      }
+      playerRef.current = null;
+      videoElementRef.current = null;
+    };
+  }, [hlsUrl, mp4Url, thumbnailUrl, videoId]);
+
+  // Keep playback progress tracking (uses the underlying <video> element)
   usePlaybackProgress({
-    videoRef,
+    videoRef: videoElementRef,
     videoId: videoId || "",
     initialProgress,
-  });
-
-  // Keyboard shortcuts
-  const togglePlay = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (video.paused) video.play();
-    else video.pause();
-  }, []);
-
-  const toggleFullscreen = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    if (document.fullscreenElement) document.exitFullscreen();
-    else container.requestFullscreen();
-  }, []);
-
-  const toggleMute = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = !video.muted;
-  }, []);
-
-  const handleSpeedChange = useCallback((delta: number) => {
-    const video = videoRef.current;
-    if (!video) return;
-    const newRate = Math.max(0.25, Math.min(2, video.playbackRate + delta));
-    video.playbackRate = newRate;
-  }, []);
-
-  useKeyboardShortcuts({
-    videoRef,
-    containerRef,
-    onTogglePlay: togglePlay,
-    onToggleFullscreen: toggleFullscreen,
-    onToggleMute: toggleMute,
-    onSpeedChange: handleSpeedChange,
   });
 
   const src = hlsUrl || mp4Url;
@@ -111,30 +113,7 @@ export default function VideoPlayerWrapper({
       className="relative aspect-video w-full overflow-hidden rounded-xl bg-black"
       tabIndex={0}
     >
-      {src ? (
-        <>
-          <video
-            ref={videoRef}
-            className="h-full w-full"
-            poster={thumbnailUrl || undefined}
-            playsInline
-          >
-            {subtitlesUrl && (
-              <track
-                src={subtitlesUrl}
-                kind="subtitles"
-                srcLang="en"
-                label="English (auto)"
-              />
-            )}
-          </video>
-          <PlayerControls
-            videoRef={videoRef}
-            containerRef={containerRef}
-            hlsRef={hlsRef}
-          />
-        </>
-      ) : (
+      {!src && (
         <div className="flex h-full items-center justify-center text-white">
           <p>Video is processing...</p>
         </div>

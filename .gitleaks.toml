@@ -8,6 +8,7 @@ title = "AweTube Gitleaks Config"
 description = "Files with test or placeholder secrets"
 paths = [
   '''.github/workflows/ci\.yml''',
+  '''.github/workflows/deploy\.yml''',
   '''src/__tests__/setup\.ts''',
   '''\.env\.example''',
 ]
