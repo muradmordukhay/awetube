@@ -5,6 +5,8 @@ import { parseBody } from "@/lib/api-utils";
 import { verifyCallbackSignature } from "@/lib/callback-signature";
 import { callbackLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { notifySubscribersOfNewVideo } from "@/lib/notifications";
+import { toCdnUrl } from "@/lib/qencode/cdn";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,7 +32,7 @@ export async function POST(req: NextRequest) {
       parsed.data;
 
     if (!verifyCallbackSignature(vid, task_token, sig)) {
-      console.error(`Invalid callback signature for vid=${vid}`);
+      logger.warn({ vid }, "Invalid callback signature");
       return NextResponse.json(
         { error: "Invalid callback signature" },
         { status: 403 }
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!video) {
-      console.error(`No video found for task_token: ${task_token}`);
+      logger.warn({ task_token }, "No video found for task token");
       return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
             v.url.endsWith(".m3u8") || v.tag === "advanced_hls"
         );
         if (hlsVideo) {
-          hlsUrl = hlsVideo.url;
+          hlsUrl = toCdnUrl(hlsVideo.url);
           duration = hlsVideo.duration || null;
           width = hlsVideo.width || null;
           height = hlsVideo.height || null;
@@ -70,7 +72,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (images && images.length > 0) {
-        thumbnailUrl = images[0].url;
+        thumbnailUrl = toCdnUrl(images[0].url);
       }
 
       const updatedVideo = await db.video.update({
@@ -94,8 +96,9 @@ export async function POST(req: NextRequest) {
         updatedVideo.channel.userId
       ).catch(() => {});
     } else if (error || status === "error") {
-      console.error(
-        `Transcoding failed for video ${video.id}: ${error_description}`
+      logger.error(
+        { videoId: video.id, error_description },
+        "Transcoding failed"
       );
       await db.video.update({
         where: { id: video.id },
@@ -105,7 +108,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (err) {
-    console.error("Callback processing error:", err);
+    logger.error({ err }, "Callback processing error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

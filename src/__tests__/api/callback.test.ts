@@ -83,27 +83,34 @@ describe("POST /api/upload/callback", () => {
           status: "completed",
           videos: [
             {
-              url: "https://cdn.example.com/video.m3u8",
+              url: "https://us-west.s3.qencode.com/mybucket/videos/video-123/hls/master.m3u8",
               tag: "advanced_hls",
               duration: 120,
               width: 1920,
               height: 1080,
             },
           ],
-          images: [{ url: "https://cdn.example.com/thumb.jpg" }],
+          images: [
+            {
+              url: "https://us-west.s3.qencode.com/mybucket/videos/video-123/thumbs/thumb.jpg",
+            },
+          ],
         },
         { vid: videoId, sig }
       )
     );
 
     expect(res.status).toBe(200);
+    // URLs should be rewritten from Qencode S3 to CDN format
     expect(mockDb.video.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: videoId },
         data: expect.objectContaining({
           status: "READY",
-          hlsUrl: "https://cdn.example.com/video.m3u8",
-          thumbnailUrl: "https://cdn.example.com/thumb.jpg",
+          hlsUrl:
+            "https://mybucket.media-storage.us-west.qencode.com/videos/video-123/hls/master.m3u8",
+          thumbnailUrl:
+            "https://mybucket.media-storage.us-west.qencode.com/videos/video-123/thumbs/thumb.jpg",
         }),
       })
     );

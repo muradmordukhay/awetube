@@ -3,11 +3,9 @@ export function buildTranscodingQuery(
   videoId: string,
   callbackUrl: string
 ) {
-  const s3Destination = {
-    url: `s3://${process.env.QENCODE_S3_BUCKET}/videos/${videoId}/`,
-    key: process.env.QENCODE_S3_ACCESS_KEY!,
-    secret: process.env.QENCODE_S3_SECRET_KEY!,
-  };
+  const bucket = process.env.QENCODE_S3_BUCKET!;
+  const region = process.env.QENCODE_S3_REGION || "us-west";
+  const baseUrl = `s3://${region}.s3.qencode.com/${bucket}/videos/${videoId}/`;
 
   return {
     query: {
@@ -15,10 +13,7 @@ export function buildTranscodingQuery(
       format: [
         {
           output: "advanced_hls",
-          destination: {
-            ...s3Destination,
-            url: `${s3Destination.url}hls/`,
-          },
+          destination: { url: `${baseUrl}hls/` },
           stream: [
             {
               size: "1920x1080",
@@ -48,10 +43,7 @@ export function buildTranscodingQuery(
         },
         {
           output: "thumbnail",
-          destination: {
-            ...s3Destination,
-            url: `${s3Destination.url}thumbs/`,
-          },
+          destination: { url: `${baseUrl}thumbs/` },
           width: 1280,
           height: 720,
           time: 5,

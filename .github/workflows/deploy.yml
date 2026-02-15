@@ -1,0 +1,97 @@
+name: Deploy
+
+on:
+  # Auto-deploy QA when code is pushed to develop
+  push:
+    branches: [develop]
+  # Manual deploy for either environment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "qa"
+        type: choice
+        options:
+          - qa
+          - production
+
+# Prevent concurrent deploys to the same environment
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'qa' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'qa' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Determine spec file
+        id: spec
+        run: |
+          ENV="${{ github.event.inputs.environment || 'qa' }}"
+          if [ "$ENV" = "production" ]; then
+            echo "file=.do/app.yaml" >> "$GITHUB_OUTPUT"
+          else
+            echo "file=.do/app.staging.yaml" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Substitute secret placeholders and deploy.
+      # Uses explicit var list so ${db.DATABASE_URL} (a DO internal ref) is NOT replaced.
+      # GitHub Actions automatically masks secret values in log output.
+      - name: Deploy to DigitalOcean App Platform
+        env:
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          CALLBACK_SIGNING_SECRET: ${{ secrets.CALLBACK_SIGNING_SECRET }}
+          QENCODE_API_KEY: ${{ secrets.QENCODE_API_KEY }}
+          QENCODE_S3_BUCKET: ${{ secrets.QENCODE_S3_BUCKET }}
+          NEXT_PUBLIC_QENCODE_PLAYER_LICENSE: ${{ secrets.NEXT_PUBLIC_QENCODE_PLAYER_LICENSE }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          envsubst '$NEXTAUTH_SECRET $CALLBACK_SIGNING_SECRET $QENCODE_API_KEY $QENCODE_S3_BUCKET $NEXT_PUBLIC_QENCODE_PLAYER_LICENSE $RESEND_API_KEY' \
+            < "${{ steps.spec.outputs.file }}" \
+            | doctl apps update "${{ secrets.DO_APP_ID }}" --spec -
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for deployment to complete..."
+          for i in $(seq 1 60); do
+            STATUS=$(doctl apps list-deployments "${{ secrets.DO_APP_ID }}" --format Phase --no-header | head -1)
+            echo "  Attempt $i/60 — status: $STATUS"
+            if [ "$STATUS" = "ACTIVE" ]; then
+              echo "✓ Deployment successful"
+              exit 0
+            fi
+            if [ "$STATUS" = "ERROR" ] || [ "$STATUS" = "CANCELED" ]; then
+              echo "✗ Deployment failed with status: $STATUS"
+              echo "--- Build logs (last 30 lines) ---"
+              doctl apps logs "${{ secrets.DO_APP_ID }}" --type=build | tail -30
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "✗ Deployment timed out after 30 minutes"
+          exit 1
+
+      - name: Verify health check
+        if: success()
+        run: |
+          ENV="${{ github.event.inputs.environment || 'qa' }}"
+          if [ "$ENV" = "production" ]; then
+            URL="https://awetube.ai"
+          else
+            URL="https://qa.awetube.ai"
+          fi
+          echo "Checking health at $URL/api/health ..."
+          sleep 10
+          RESPONSE=$(curl -sf "$URL/api/health" || echo '{"status":"error"}')
+          echo "Response: $RESPONSE"
+          echo "$RESPONSE" | grep -q '"status":"ok"' || { echo "✗ Health check failed"; exit 1; }
+          echo "✓ Health check passed"
