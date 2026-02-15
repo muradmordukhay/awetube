@@ -1,5 +1,8 @@
 # AweTube
 
+[![CI](https://github.com/muradmordukhay/awetube/actions/workflows/ci.yml/badge.svg)](https://github.com/muradmordukhay/awetube/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A modern, open-source video sharing platform built with Next.js 16, React 19, and TypeScript.
 
 ## Features
