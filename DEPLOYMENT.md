@@ -80,6 +80,8 @@ Go to your repo **Settings > Secrets and variables > Actions**.
 | `QENCODE_API_KEY` | Qencode dashboard > API Keys |
 | `QENCODE_S3_BUCKET` | Qencode dashboard > Media Storage |
 | `NEXT_PUBLIC_QENCODE_PLAYER_LICENSE` | Qencode dashboard > Player |
+| `GOOGLE_CLIENT_ID` | Google Cloud Console > APIs & Services > Credentials |
+| `GOOGLE_CLIENT_SECRET` | Google Cloud Console > APIs & Services > Credentials |
 | `RESEND_API_KEY` | Resend dashboard > API Keys (optional) |
 
 **Environment secrets** (Settings > Environments):
@@ -103,9 +105,11 @@ export QENCODE_API_KEY="<your-key>"
 export QENCODE_S3_BUCKET="<your-bucket>"
 export NEXT_PUBLIC_QENCODE_PLAYER_LICENSE="<your-license>"
 export RESEND_API_KEY=""
+export GOOGLE_CLIENT_ID="<your-google-client-id>"
+export GOOGLE_CLIENT_SECRET="<your-google-client-secret>"
 
 # Create QA app
-envsubst '$NEXTAUTH_SECRET $CALLBACK_SIGNING_SECRET $QENCODE_API_KEY $QENCODE_S3_BUCKET $NEXT_PUBLIC_QENCODE_PLAYER_LICENSE $RESEND_API_KEY' \
+envsubst '$NEXTAUTH_SECRET $CALLBACK_SIGNING_SECRET $QENCODE_API_KEY $QENCODE_S3_BUCKET $NEXT_PUBLIC_QENCODE_PLAYER_LICENSE $RESEND_API_KEY $GOOGLE_CLIENT_ID $GOOGLE_CLIENT_SECRET' \
   < .do/app.staging.yaml | doctl apps create --spec -
 
 # Note the QA App ID, then update secrets for Production
@@ -113,7 +117,7 @@ export NEXTAUTH_SECRET="<prod-value>"
 export CALLBACK_SIGNING_SECRET="<prod-value>"
 
 # Create Production app
-envsubst '$NEXTAUTH_SECRET $CALLBACK_SIGNING_SECRET $QENCODE_API_KEY $QENCODE_S3_BUCKET $NEXT_PUBLIC_QENCODE_PLAYER_LICENSE $RESEND_API_KEY' \
+envsubst '$NEXTAUTH_SECRET $CALLBACK_SIGNING_SECRET $QENCODE_API_KEY $QENCODE_S3_BUCKET $NEXT_PUBLIC_QENCODE_PLAYER_LICENSE $RESEND_API_KEY $GOOGLE_CLIENT_ID $GOOGLE_CLIENT_SECRET' \
   < .do/app.yaml | doctl apps create --spec -
 ```
 
