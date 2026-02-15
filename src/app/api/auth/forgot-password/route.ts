@@ -9,6 +9,7 @@ import {
   rateLimitResponse,
 } from "@/lib/rate-limit";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: Request) {
   try {
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
 
     return successResponse;
   } catch (error) {
-    console.error("Forgot password error:", error);
+    logger.error({ err: error }, "Forgot password error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

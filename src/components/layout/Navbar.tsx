@@ -134,9 +134,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
-                    const handle = (
-                      session.user as Record<string, unknown>
-                    ).channelHandle;
+                    const handle = session.user.channelHandle;
                     if (handle) router.push(`/channel/${handle}`);
                   }}
                 >

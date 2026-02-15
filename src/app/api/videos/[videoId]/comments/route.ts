@@ -5,6 +5,7 @@ import { commentPaginationSchema, commentCreateSchema } from "@/lib/validation";
 import { parseSearchParams, parseBody } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { notifyCommentReply } from "@/lib/notifications";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   req: NextRequest,
@@ -48,7 +49,7 @@ export async function GET(
       hasMore,
     });
   } catch (error) {
-    console.error("Error fetching comments:", error);
+    logger.error({ err: error }, "Error fetching comments");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -119,7 +120,7 @@ export async function POST(
 
     return NextResponse.json(comment, { status: 201 });
   } catch (error) {
-    console.error("Error creating comment:", error);
+    logger.error({ err: error }, "Error creating comment");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

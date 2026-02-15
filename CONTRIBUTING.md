@@ -12,8 +12,10 @@ Thank you for your interest in contributing to AweTube! This guide will help you
 
 ## Development Workflow
 
-1. Create a feature branch from `main`:
+1. Create a feature branch from `develop`:
    ```bash
+   git checkout develop
+   git pull origin develop
    git checkout -b feature/my-feature
    ```
 2. Make your changes
@@ -24,7 +26,7 @@ Thank you for your interest in contributing to AweTube! This guide will help you
    npx tsc --noEmit      # Type check
    ```
 4. Commit your changes using [conventional commits](#commit-convention)
-5. Push to your fork and open a Pull Request
+5. Push to your fork and open a Pull Request against `develop`
 
 ## Code Style
 

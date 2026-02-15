@@ -5,6 +5,7 @@ import { registerSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
 import { authLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { generateUniqueHandle } from "@/lib/channel-utils";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: Request) {
   try {
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Registration error:", error);
+    logger.error({ err: error }, "Registration error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { channelUpdateSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _req: NextRequest,
@@ -34,7 +35,7 @@ export async function GET(
 
     return NextResponse.json(channel);
   } catch (error) {
-    console.error("Error fetching channel:", error);
+    logger.error({ err: error }, "Error fetching channel");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -81,7 +82,7 @@ export async function PUT(
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("Error updating channel:", error);
+    logger.error({ err: error }, "Error updating channel");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ count });
   } catch (error) {
-    console.error("Error fetching unread count:", error);
+    logger.error({ err: error }, "Error fetching unread count");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

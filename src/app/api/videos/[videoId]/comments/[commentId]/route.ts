@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { commentUpdateSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 type RouteParams = { params: Promise<{ videoId: string; commentId: string }> };
 
@@ -46,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("Error updating comment:", error);
+    logger.error({ err: error }, "Error updating comment");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -95,7 +96,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting comment:", error);
+    logger.error({ err: error }, "Error deleting comment");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { watchHistorySchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error recording watch history:", error);
+    logger.error({ err: error }, "Error recording watch history");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -62,7 +63,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error clearing watch history:", error);
+    logger.error({ err: error }, "Error clearing watch history");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

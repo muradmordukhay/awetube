@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { notificationPaginationSchema } from "@/lib/validation";
 import { parseSearchParams } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // GET: paginated notifications
 export async function GET(req: NextRequest) {
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
       hasMore,
     });
   } catch (error) {
-    console.error("Error fetching notifications:", error);
+    logger.error({ err: error }, "Error fetching notifications");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -68,7 +69,7 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error marking notifications as read:", error);
+    logger.error({ err: error }, "Error marking notifications as read");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

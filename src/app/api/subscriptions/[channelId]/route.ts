@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 type RouteParams = { params: Promise<{ channelId: string }> };
 
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Error toggling subscription:", error);
+    logger.error({ err: error }, "Error toggling subscription");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -92,7 +93,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ subscribed: !!existing });
   } catch (error) {
-    console.error("Error checking subscription:", error);
+    logger.error({ err: error }, "Error checking subscription");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

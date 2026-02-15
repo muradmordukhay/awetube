@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 type RouteParams = { params: Promise<{ notificationId: string }> };
 
@@ -39,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error marking notification as read:", error);
+    logger.error({ err: error }, "Error marking notification as read");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

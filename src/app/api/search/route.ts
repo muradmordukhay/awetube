@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { searchSchema } from "@/lib/validation";
 import { parseSearchParams } from "@/lib/api-utils";
 import { searchLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
       hasMore,
     });
   } catch (error) {
-    console.error("Search error:", error);
+    logger.error({ err: error }, "Search error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

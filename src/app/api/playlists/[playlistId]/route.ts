@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { playlistUpdateSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 type RouteParams = { params: Promise<{ playlistId: string }> };
 
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(playlist);
   } catch (error) {
-    console.error("Error fetching playlist:", error);
+    logger.error({ err: error }, "Error fetching playlist");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -94,7 +95,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("Error updating playlist:", error);
+    logger.error({ err: error }, "Error updating playlist");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -132,7 +133,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting playlist:", error);
+    logger.error({ err: error }, "Error deleting playlist");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

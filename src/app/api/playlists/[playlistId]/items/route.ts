@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { playlistItemAddSchema, playlistItemRemoveSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
 import { apiLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 type RouteParams = { params: Promise<{ playlistId: string }> };
 
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
-    console.error("Error adding to playlist:", error);
+    logger.error({ err: error }, "Error adding to playlist");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -88,7 +89,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error removing from playlist:", error);
+    logger.error({ err: error }, "Error removing from playlist");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
