@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/upload/callback/route";
 import { db } from "@/lib/db";
-import { signCallbackUrl } from "@/lib/callback-signature";
+import { signCallbackUrlWithTimestamp } from "@/lib/callback-signature";
 import { NextRequest } from "next/server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -13,17 +13,24 @@ beforeEach(() => {
 
 function makeRequest(
   body: unknown,
-  params?: { vid?: string; sig?: string }
+  params?: { vid?: string; sig?: string; ts?: string }
 ) {
   const url = new URL("http://localhost/api/upload/callback");
   if (params?.vid) url.searchParams.set("vid", params.vid);
   if (params?.sig) url.searchParams.set("sig", params.sig);
+  if (params?.ts) url.searchParams.set("ts", params.ts);
 
   return new NextRequest(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+function validParams(videoId: string, taskToken: string) {
+  const ts = Math.floor(Date.now() / 1000);
+  const sig = signCallbackUrlWithTimestamp(videoId, taskToken, ts);
+  return { vid: videoId, sig, ts: String(ts) };
 }
 
 describe("POST /api/upload/callback", () => {
@@ -34,7 +41,7 @@ describe("POST /api/upload/callback", () => {
     expect(data.error).toContain("signature");
   });
 
-  it("returns 403 for invalid signature", async () => {
+  it("returns 403 when ts param is missing", async () => {
     const res = await POST(
       makeRequest(
         { task_token: "tok" },
@@ -44,17 +51,41 @@ describe("POST /api/upload/callback", () => {
     expect(res.status).toBe(403);
   });
 
+  it("returns 403 for invalid signature", async () => {
+    const res = await POST(
+      makeRequest(
+        { task_token: "tok" },
+        { vid: "video1", sig: "0".repeat(64), ts: String(Math.floor(Date.now() / 1000)) }
+      )
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 403 for expired timestamp", async () => {
+    const videoId = "video-123";
+    const taskToken = "task-456";
+    const ts = Math.floor(Date.now() / 1000) - 600; // 10 minutes ago
+    const sig = signCallbackUrlWithTimestamp(videoId, taskToken, ts);
+
+    const res = await POST(
+      makeRequest(
+        { task_token: taskToken, status: "completed" },
+        { vid: videoId, sig, ts: String(ts) }
+      )
+    );
+    expect(res.status).toBe(403);
+  });
+
   it("returns 404 when video not found", async () => {
     const videoId = "video-123";
     const taskToken = "task-456";
-    const sig = signCallbackUrl(videoId, taskToken);
 
     mockDb.video.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(
       makeRequest(
         { task_token: taskToken, status: "completed" },
-        { vid: videoId, sig }
+        validParams(videoId, taskToken)
       )
     );
     expect(res.status).toBe(404);
@@ -63,7 +94,6 @@ describe("POST /api/upload/callback", () => {
   it("updates video to READY on completed callback", async () => {
     const videoId = "video-123";
     const taskToken = "task-456";
-    const sig = signCallbackUrl(videoId, taskToken);
 
     mockDb.video.findFirst.mockResolvedValueOnce({
       id: videoId,
@@ -96,12 +126,11 @@ describe("POST /api/upload/callback", () => {
             },
           ],
         },
-        { vid: videoId, sig }
+        validParams(videoId, taskToken)
       )
     );
 
     expect(res.status).toBe(200);
-    // URLs should be rewritten from Qencode S3 to CDN format
     expect(mockDb.video.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: videoId },
@@ -119,7 +148,6 @@ describe("POST /api/upload/callback", () => {
   it("updates video to FAILED on error callback", async () => {
     const videoId = "video-123";
     const taskToken = "task-456";
-    const sig = signCallbackUrl(videoId, taskToken);
 
     mockDb.video.findFirst.mockResolvedValueOnce({
       id: videoId,
@@ -135,7 +163,7 @@ describe("POST /api/upload/callback", () => {
           error: 1,
           error_description: "Encoding failed",
         },
-        { vid: videoId, sig }
+        validParams(videoId, taskToken)
       )
     );
 
