@@ -73,8 +73,23 @@ vi.mock("@/lib/db", () => {
     playlistItem: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    tag: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      upsert: vi.fn(),
+    },
+    videoTag: {
+      findUnique: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn(),
       delete: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
     },
     passwordResetToken: {
       findUnique: vi.fn(),
@@ -83,8 +98,13 @@ vi.mock("@/lib/db", () => {
     },
     $transaction: vi.fn(),
   };
-  // $transaction calls the callback with the same db object
-  (db.$transaction as ReturnType<typeof vi.fn>).mockImplementation((fn: (tx: typeof db) => Promise<unknown>) => fn(db));
+  // $transaction handles both callback and array patterns
+  (db.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
+    (fnOrArray: ((tx: typeof db) => Promise<unknown>) | Promise<unknown>[]) => {
+      if (typeof fnOrArray === "function") return fnOrArray(db);
+      return Promise.all(fnOrArray);
+    }
+  );
   return { db };
 });
 

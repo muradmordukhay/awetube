@@ -5,7 +5,7 @@ import { qencode } from "@/lib/qencode/client";
 import { buildTranscodingQuery } from "@/lib/qencode/transcoding";
 import { startTranscodeSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
-import { signCallbackUrl } from "@/lib/callback-signature";
+import { signCallbackUrlWithTimestamp } from "@/lib/callback-signature";
 import { uploadLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
@@ -35,8 +35,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Build transcoding profile and start encoding
-    const sig = signCallbackUrl(videoId, taskToken);
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/upload/callback?vid=${videoId}&sig=${sig}`;
+    const ts = Math.floor(Date.now() / 1000);
+    const sig = signCallbackUrlWithTimestamp(videoId, taskToken, ts);
+    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/upload/callback?vid=${videoId}&sig=${sig}&ts=${ts}`;
     const query = buildTranscodingQuery(tusUri, videoId, callbackUrl);
 
     await qencode.startEncode(taskToken, query);

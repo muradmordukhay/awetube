@@ -136,6 +136,27 @@ export const resetPasswordSchema = z.object({
     .max(128),
 });
 
+// === Tags ===
+export const tagSearchSchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export const tagAddSchema = z.object({
+  name: z.string().trim().min(1, "Tag name is required").max(50).transform((v) => v.toLowerCase()),
+});
+
+export const tagVideosSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(24),
+});
+
+// === Playlist Reorder ===
+export const playlistReorderSchema = z.object({
+  itemIds: z.array(z.string().min(1)).min(1).max(500),
+});
+
 // === Search ===
 export const searchSchema = z.object({
   q: z.string().trim().max(200).optional(),

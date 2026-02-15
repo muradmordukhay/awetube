@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { callbackSchema } from "@/lib/validation";
 import { parseBody } from "@/lib/api-utils";
-import { verifyCallbackSignature } from "@/lib/callback-signature";
+import { verifyCallbackWithTimestamp } from "@/lib/callback-signature";
 import { callbackLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { notifySubscribersOfNewVideo } from "@/lib/notifications";
 import { toCdnUrl } from "@/lib/qencode/cdn";
@@ -14,12 +14,13 @@ export async function POST(req: NextRequest) {
     const rl = callbackLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
-    // Verify callback signature
+    // Verify callback signature with replay protection
     const url = new URL(req.url);
     const sig = url.searchParams.get("sig");
     const vid = url.searchParams.get("vid");
+    const ts = url.searchParams.get("ts");
 
-    if (!sig || !vid) {
+    if (!sig || !vid || !ts) {
       return NextResponse.json(
         { error: "Missing callback signature" },
         { status: 403 }
@@ -31,8 +32,8 @@ export async function POST(req: NextRequest) {
     const { task_token, status, error, error_description, videos, images } =
       parsed.data;
 
-    if (!verifyCallbackSignature(vid, task_token, sig)) {
-      logger.warn({ vid }, "Invalid callback signature");
+    if (!verifyCallbackWithTimestamp(vid, task_token, sig, Number(ts))) {
+      logger.warn({ vid, ts }, "Invalid or expired callback signature");
       return NextResponse.json(
         { error: "Invalid callback signature" },
         { status: 403 }

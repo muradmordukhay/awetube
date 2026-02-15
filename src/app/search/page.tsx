@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import VideoGrid from "@/components/video/VideoGrid";
+import ErrorState from "@/components/ui/error-state";
 
 interface SearchPageProps {
   searchParams: Promise<{ q?: string }>;
@@ -22,6 +23,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       avatarUrl: string | null;
     };
   }> = [];
+  let hasError = false;
 
   if (query) {
     try {
@@ -48,13 +50,18 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         createdAt: v.createdAt.toISOString(),
       }));
     } catch {
-      // Database error — show empty
+      hasError = true;
     }
   }
 
   return (
     <div className="py-4">
-      {query ? (
+      {hasError ? (
+        <ErrorState
+          title="Search unavailable"
+          description="Something went wrong. Please try again later."
+        />
+      ) : query ? (
         <>
           <h1 className="mb-4 text-lg font-semibold">
             Search results for &ldquo;{query}&rdquo;
