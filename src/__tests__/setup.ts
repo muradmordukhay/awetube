@@ -82,6 +82,7 @@ vi.mock("@/lib/db", () => {
       deleteMany: vi.fn(),
     },
     $transaction: vi.fn(),
+    $queryRaw: vi.fn().mockResolvedValue([{ "?column?": 1 }]),
   };
   // $transaction calls the callback with the same db object
   (db.$transaction as ReturnType<typeof vi.fn>).mockImplementation((fn: (tx: typeof db) => Promise<unknown>) => fn(db));
@@ -101,3 +102,26 @@ vi.mock("@/lib/qencode/client", () => ({
     getStatus: vi.fn(),
   },
 }));
+
+// Mock email module
+vi.mock("@/lib/email", () => ({
+  sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Mock rate limiting — keep real rateLimit/getClientIp/rateLimitResponse
+// but override pre-configured limiters to always allow in API route tests
+vi.mock("@/lib/rate-limit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/rate-limit")>();
+  const alwaysAllow = {
+    check: () => ({ success: true, remaining: 100, resetIn: 0 }),
+  };
+  return {
+    ...actual,
+    apiLimiter: alwaysAllow,
+    uploadLimiter: alwaysAllow,
+    callbackLimiter: alwaysAllow,
+    passwordResetLimiter: alwaysAllow,
+    searchLimiter: alwaysAllow,
+    channelCreationLimiter: alwaysAllow,
+  };
+});

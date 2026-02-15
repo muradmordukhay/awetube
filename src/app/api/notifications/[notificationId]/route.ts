@@ -10,7 +10,7 @@ type RouteParams = { params: Promise<{ notificationId: string }> };
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
     const ip = getClientIp(req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const session = await auth();

@@ -1,13 +1,35 @@
 import { NextResponse } from "next/server";
 
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface RateLimitResult {
+  success: boolean;
+  remaining: number;
+  resetIn: number;
 }
 
 interface RateLimitConfig {
   windowMs: number;
   maxRequests: number;
+}
+
+export interface SyncRateLimiter {
+  check(identifier: string): RateLimitResult;
+}
+
+export interface RateLimiter {
+  check(identifier: string): RateLimitResult | Promise<RateLimitResult>;
+}
+
+// ---------------------------------------------------------------------------
+// In-memory backend (development / tests / fallback)
+// ---------------------------------------------------------------------------
+
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
 }
 
 const stores = new Map<string, Map<string, RateLimitEntry>>();
@@ -17,13 +39,11 @@ function getStore(name: string): Map<string, RateLimitEntry> {
   return stores.get(name)!;
 }
 
-export function rateLimit(name: string, config: RateLimitConfig) {
+export function rateLimit(name: string, config: RateLimitConfig): SyncRateLimiter {
   const store = getStore(name);
 
   return {
-    check(
-      identifier: string
-    ): { success: boolean; remaining: number; resetIn: number } {
+    check(identifier: string): RateLimitResult {
       const now = Date.now();
       const entry = store.get(identifier);
 
@@ -57,33 +77,87 @@ export function rateLimit(name: string, config: RateLimitConfig) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Redis backend (production — requires UPSTASH_REDIS_REST_URL)
+// ---------------------------------------------------------------------------
+
+function createRedisLimiter(
+  prefix: string,
+  config: RateLimitConfig
+): RateLimiter | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) return null;
+
+  // Lazy-load to avoid import errors when packages aren't configured
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Redis } = require("@upstash/redis") as typeof import("@upstash/redis");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Ratelimit } = require("@upstash/ratelimit") as typeof import("@upstash/ratelimit");
+
+  const redis = new Redis({ url, token });
+  const windowSec = Math.ceil(config.windowMs / 1000);
+
+  const limiter = new Ratelimit({
+    redis,
+    prefix: `rl:${prefix}`,
+    limiter: Ratelimit.fixedWindow(config.maxRequests, `${windowSec} s`),
+    analytics: false,
+  });
+
+  return {
+    async check(identifier: string): Promise<RateLimitResult> {
+      const result = await limiter.limit(identifier);
+      return {
+        success: result.success,
+        remaining: result.remaining,
+        resetIn: Math.max(0, result.reset - Date.now()),
+      };
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Limiter factory — Redis when available, in-memory fallback
+// ---------------------------------------------------------------------------
+
+function createLimiter(name: string, config: RateLimitConfig): RateLimiter {
+  return createRedisLimiter(name, config) ?? rateLimit(name, config);
+}
+
+// ---------------------------------------------------------------------------
 // Pre-configured limiters
-// NOTE: In-memory store resets on restart and doesn't work across serverless instances.
-// For production, use Redis-backed rate limiting (e.g., @upstash/ratelimit).
-export const authLimiter = rateLimit("auth", {
+// ---------------------------------------------------------------------------
+
+export const authLimiter = createLimiter("auth", {
   windowMs: 15 * 60 * 1000,
   maxRequests: 10,
 });
-export const uploadLimiter = rateLimit("upload", {
+export const uploadLimiter = createLimiter("upload", {
   windowMs: 60 * 60 * 1000,
   maxRequests: 20,
 });
-export const searchLimiter = rateLimit("search", {
+export const searchLimiter = createLimiter("search", {
   windowMs: 60 * 1000,
   maxRequests: 30,
 });
-export const apiLimiter = rateLimit("api", {
+export const apiLimiter = createLimiter("api", {
   windowMs: 60 * 1000,
   maxRequests: 60,
 });
-export const passwordResetLimiter = rateLimit("passwordReset", {
+export const passwordResetLimiter = createLimiter("passwordReset", {
   windowMs: 15 * 60 * 1000,
   maxRequests: 3,
 });
-export const callbackLimiter = rateLimit("callback", {
+export const callbackLimiter = createLimiter("callback", {
   windowMs: 60 * 1000,
   maxRequests: 100,
 });
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 export function getClientIp(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -101,7 +175,9 @@ export function rateLimitResponse(resetIn: number): NextResponse {
   );
 }
 
-// Periodic cleanup of expired entries to prevent memory leaks
+// ---------------------------------------------------------------------------
+// Memory cleanup for in-memory stores (no-op when using Redis)
+// ---------------------------------------------------------------------------
 if (typeof setInterval !== "undefined") {
   setInterval(
     () => {

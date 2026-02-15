@@ -10,7 +10,7 @@ import { logger } from "@/lib/logger";
 export async function POST(req: Request) {
   try {
     const ip = getClientIp(req);
-    const limit = authLimiter.check(ip);
+    const limit = await authLimiter.check(ip);
     if (!limit.success) return rateLimitResponse(limit.resetIn);
 
     const parsed = parseBody(registerSchema, await req.json());

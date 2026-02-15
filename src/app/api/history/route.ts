@@ -9,7 +9,7 @@ import { logger } from "@/lib/logger";
 export async function POST(req: NextRequest) {
   try {
     const ip = getClientIp(req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const session = await auth();
@@ -20,6 +20,17 @@ export async function POST(req: NextRequest) {
     const parsed = parseBody(watchHistorySchema, await req.json());
     if (!parsed.success) return parsed.response;
     const { videoId, progressSeconds } = parsed.data;
+
+    const video = await db.video.findUnique({
+      where: { id: videoId },
+      select: { id: true },
+    });
+    if (!video) {
+      return NextResponse.json(
+        { error: "Video not found" },
+        { status: 404 }
+      );
+    }
 
     await db.watchHistory.upsert({
       where: {
@@ -49,7 +60,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const ip = getClientIp(req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const session = await auth();

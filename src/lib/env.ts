@@ -26,6 +26,10 @@ const serverSchema = z.object({
   QENCODE_S3_BUCKET: z.string().min(1, "QENCODE_S3_BUCKET is required"),
   QENCODE_S3_REGION: z.string().default("us-west"),
 
+  // Optional — Rate limiting (Upstash Redis)
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
   // Optional
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),

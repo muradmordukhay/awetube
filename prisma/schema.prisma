@@ -108,6 +108,8 @@ model Video {
   @@index([channelId])
   @@index([status])
   @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([status, viewCount])
 }
 
 enum VideoStatus {

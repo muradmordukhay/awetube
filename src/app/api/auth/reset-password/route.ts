@@ -14,7 +14,7 @@ import { logger } from "@/lib/logger";
 export async function POST(req: Request) {
   try {
     const ip = getClientIp(req);
-    const limit = passwordResetLimiter.check(ip);
+    const limit = await passwordResetLimiter.check(ip);
     if (!limit.success) return rateLimitResponse(limit.resetIn);
 
     const parsed = parseBody(resetPasswordSchema, await req.json());

@@ -12,7 +12,7 @@ type RouteParams = { params: Promise<{ playlistId: string }> };
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const ip = getClientIp(req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const { playlistId } = await params;
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 export async function PUT(req: NextRequest, { params }: RouteParams) {
   try {
     const ip = getClientIp(req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const session = await auth();
@@ -107,7 +107,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
     const ip = getClientIp(req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const session = await auth();
