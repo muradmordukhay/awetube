@@ -1,9 +1,21 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@awetube.com";
+
+let resend: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resend) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error(
+        "RESEND_API_KEY environment variable is not set. Email sending is unavailable."
+      );
+    }
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 export async function sendPasswordResetEmail(
   email: string,
@@ -11,7 +23,7 @@ export async function sendPasswordResetEmail(
 ): Promise<void> {
   const resetUrl = `${APP_URL}/reset-password/${token}`;
 
-  await resend.emails.send({
+  await getResendClient().emails.send({
     from: FROM_EMAIL,
     to: email,
     subject: "Reset your AweTube password",
