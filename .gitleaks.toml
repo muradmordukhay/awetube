@@ -1,0 +1,13 @@
+# Gitleaks configuration
+# https://github.com/gitleaks/gitleaks
+
+title = "AweTube Gitleaks Config"
+
+# Global allowlist — files that may contain test/placeholder secrets
+[allowlist]
+description = "Files with test or placeholder secrets"
+paths = [
+  '''.github/workflows/ci\.yml''',
+  '''src/__tests__/setup\.ts''',
+  '''\.env\.example''',
+]

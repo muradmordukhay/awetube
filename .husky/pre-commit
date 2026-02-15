@@ -1,0 +1,8 @@
+# Scan staged changes for secrets before allowing commit
+# Requires gitleaks: brew install gitleaks
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --verbose
+else
+  echo "Warning: gitleaks is not installed. Skipping secret scan."
+  echo "Install it with: brew install gitleaks"
+fi
