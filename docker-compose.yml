@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: awetube
+      POSTGRES_PASSWORD: awetube
+      POSTGRES_DB: awetube
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U awetube -d awetube"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    working_dir: /app
+    environment:
+      DATABASE_URL: postgresql://awetube:awetube@db:5432/awetube
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["npx", "prisma", "db", "push", "--skip-generate"]
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://awetube:awetube@db:5432/awetube
+      NEXTAUTH_SECRET: local-dev-secret-change-in-production
+      NEXTAUTH_URL: http://localhost:3000
+      CALLBACK_SIGNING_SECRET: local-dev-callback-secret-change-in-production
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+volumes:
+  pgdata:
