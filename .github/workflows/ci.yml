@@ -97,3 +97,50 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run build
+
+  # -----------------------------------------------------------------------
+  # Post-deploy health check (runs only on pushes to main)
+  # Verifies the deployed app responds on /api/health after a deploy.
+  # Set DEPLOY_URL as a repository secret (e.g. https://awetube.example.com).
+  # -----------------------------------------------------------------------
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Wait for deploy propagation
+        run: sleep 30
+
+      - name: Health check with retries
+        env:
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "⚠️  DEPLOY_URL secret not set — skipping health check"
+            exit 0
+          fi
+
+          MAX_RETRIES=5
+          RETRY_DELAY=10
+          for i in $(seq 1 $MAX_RETRIES); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOY_URL/api/health" || true)
+            echo "Attempt $i/$MAX_RETRIES: HTTP $STATUS"
+
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Health check passed"
+              exit 0
+            fi
+
+            if [ "$i" -lt "$MAX_RETRIES" ]; then
+              echo "Retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+            fi
+          done
+
+          echo "❌ Health check failed after $MAX_RETRIES attempts"
+          echo "Last status: HTTP $STATUS"
+          echo ""
+          echo "⚠️  Consider rolling back the deploy:"
+          echo "  git revert HEAD && git push"
+          exit 1

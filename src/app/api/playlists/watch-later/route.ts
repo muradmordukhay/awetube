@@ -32,7 +32,7 @@ async function getOrCreateWatchLater(userId: string) {
 export async function GET(req: NextRequest) {
   try {
     const ip = getClientIp(req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const session = await auth();
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const ip = getClientIp(req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const session = await auth();

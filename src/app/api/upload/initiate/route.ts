@@ -10,7 +10,7 @@ import { logger } from "@/lib/logger";
 export async function POST(req: NextRequest) {
   try {
     const ip = getClientIp(req);
-    const rl = uploadLimiter.check(ip);
+    const rl = await uploadLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const session = await auth();

@@ -8,7 +8,7 @@ import { logger } from "@/lib/logger";
 export async function GET(req: NextRequest) {
   try {
     const ip = getClientIp(req);
-    const rl = searchLimiter.check(ip);
+    const rl = await searchLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const { searchParams } = new URL(req.url);

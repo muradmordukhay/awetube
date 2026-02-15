@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const ip = getClientIp(req);
-  const rl = apiLimiter.check(ip);
+  const rl = await apiLimiter.check(ip);
   if (!rl.success) return rateLimitResponse(rl.resetIn);
 
   try {

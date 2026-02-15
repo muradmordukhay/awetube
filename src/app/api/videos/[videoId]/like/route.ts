@@ -10,7 +10,7 @@ export async function POST(
 ) {
   try {
     const ip = getClientIp(_req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const session = await auth();
@@ -22,6 +22,14 @@ export async function POST(
     const userId = session.user.id;
 
     const result = await db.$transaction(async (tx) => {
+      const video = await tx.video.findUnique({
+        where: { id: videoId },
+        select: { id: true },
+      });
+      if (!video) {
+        return { error: "Video not found" } as const;
+      }
+
       const existingLike = await tx.like.findUnique({
         where: {
           videoId_userId: { videoId, userId },
@@ -46,6 +54,13 @@ export async function POST(
         return { liked: true };
       }
     });
+
+    if ("error" in result) {
+      return NextResponse.json(
+        { error: result.error },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(result);
   } catch (error) {

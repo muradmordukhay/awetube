@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
 export async function POST(req: NextRequest) {
   try {
     const ip = getClientIp(req);
-    const rl = callbackLimiter.check(ip);
+    const rl = await callbackLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     // Verify callback signature

@@ -13,7 +13,7 @@ export async function GET(
 ) {
   try {
     const ip = getClientIp(req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const { videoId } = await params;
@@ -63,7 +63,7 @@ export async function POST(
 ) {
   try {
     const ip = getClientIp(req);
-    const rl = apiLimiter.check(ip);
+    const rl = await apiLimiter.check(ip);
     if (!rl.success) return rateLimitResponse(rl.resetIn);
 
     const session = await auth();
