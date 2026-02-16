@@ -61,9 +61,19 @@ jobs:
 
       - name: Force rebuild from latest code
         run: |
+          echo "Waiting for any in-flight deployment to settle..."
+          for i in $(seq 1 30); do
+            STATUS=$(doctl apps list-deployments "${{ secrets.DO_APP_ID }}" --format Phase --no-header | head -1)
+            if [ "$STATUS" = "ACTIVE" ] || [ "$STATUS" = "ERROR" ] || [ "$STATUS" = "CANCELED" ]; then
+              break
+            fi
+            echo "  Current status: $STATUS — waiting..."
+            sleep 10
+          done
           echo "Triggering forced rebuild..."
           doctl apps create-deployment "${{ secrets.DO_APP_ID }}" --force-rebuild --wait
           echo "✓ Deployment complete"
+
 
 
       - name: Verify health check
