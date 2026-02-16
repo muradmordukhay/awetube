@@ -1,18 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,18 +18,19 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
+      const res = await fetch("/api/auth/email-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       });
 
-      if (result?.error) {
-        setError("Invalid email or password");
-      } else {
-        router.push("/");
-        router.refresh();
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Something went wrong. Please try again.");
+        return;
       }
+
+      setSent(true);
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -48,60 +46,57 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold">Sign in to AweTube</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
+        {sent ? (
+          <div className="space-y-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              If an account with that email exists, we sent a sign-in link.
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setSent(false)}
+            >
+              Send another link
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
             </div>
-          )}
 
-          <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
-            </label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Sending link..." : "Send sign-in link"}
+            </Button>
+          </form>
+        )}
 
-          <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">
-              Password
-            </label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+        <p className="text-center text-sm text-muted-foreground">
+          By continuing, you agree to receive a secure sign-in link by email.
+        </p>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
-          </Button>
-        </form>
-
-        <div className="flex items-center justify-between text-sm">
-          <p className="text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="font-medium text-primary underline">
-              Create one
-            </Link>
-          </p>
-          <Link
-            href="/forgot-password"
-            className="text-sm text-muted-foreground hover:text-primary underline"
-          >
-            Forgot password?
+        <p className="text-center text-sm text-muted-foreground">
+          Need to create an account?{" "}
+          <Link href="/register" className="font-medium text-primary underline">
+            Use email sign-in
           </Link>
-        </div>
+        </p>
       </div>
     </div>
   );

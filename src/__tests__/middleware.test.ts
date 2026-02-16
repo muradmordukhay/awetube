@@ -43,6 +43,7 @@ describe("Security headers middleware", () => {
     const res = callMiddleware();
     const csp = res.headers.get("Content-Security-Policy");
     expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval' https://player.qencode.com");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("img-src 'self' data: https://*.qencode.com");
     expect(csp).toContain("media-src 'self' https://*.qencode.com blob:");

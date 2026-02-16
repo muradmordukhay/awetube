@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://player.qencode.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https://*.qencode.com https://*.amazonaws.com",
   "media-src 'self' https://*.qencode.com blob:",

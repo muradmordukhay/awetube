@@ -1,13 +1,12 @@
 import { z } from "zod";
 
 // === Auth ===
-export const registerSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(100),
+export const emailLinkRequestSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .max(128),
+});
+
+export const displayNameSchema = z.object({
+  displayName: z.string().trim().min(1, "Display name is required").max(100),
 });
 
 // === Upload ===
@@ -121,19 +120,6 @@ export const playlistItemRemoveSchema = z.object({
 // === Watch Later ===
 export const watchLaterToggleSchema = z.object({
   videoId: z.string().min(1, "videoId is required"),
-});
-
-// === Password Reset ===
-export const forgotPasswordSchema = z.object({
-  email: z.string().trim().email("Invalid email address").max(255),
-});
-
-export const resetPasswordSchema = z.object({
-  token: z.string().min(1, "Token is required"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .max(128),
 });
 
 // === Tags ===

@@ -7,14 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Core user account. Password is required (email + password auth only).
-/// One-to-one with Channel (auto-created on registration).
+/// Core user account. Password is optional (passwordless email link auth).
+/// One-to-one with Channel (auto-created on first login).
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
   image        String?
-  passwordHash String
+  passwordHash String?
+  needsDisplayName Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -235,6 +236,19 @@ model PlaylistItem {
 
   @@unique([playlistId, videoId])
   @@index([playlistId, position])
+}
+
+/// One-time login tokens for passwordless email sign-in.
+model LoginToken {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
 }
 
 model PasswordResetToken {

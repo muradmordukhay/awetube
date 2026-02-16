@@ -6,6 +6,7 @@ declare module "next-auth" {
       id: string;
       channelId: string | null;
       channelHandle: string | null;
+      needsDisplayName: boolean;
     } & DefaultSession["user"];
   }
 }
@@ -15,5 +16,6 @@ declare module "next-auth/jwt" {
     id: string;
     channelId: string | null;
     channelHandle: string | null;
+    needsDisplayName: boolean;
   }
 }

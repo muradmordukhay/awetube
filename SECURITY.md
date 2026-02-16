@@ -27,7 +27,7 @@ We will acknowledge your report within 48 hours and work with you to understand 
 
 AweTube implements the following security practices:
 
-- **Authentication** — NextAuth v5 with JWT strategy, bcrypt password hashing (12 rounds)
+- **Authentication** — NextAuth v5 with JWT strategy, passwordless email links
 - **Security Headers Middleware** (`src/middleware.ts`) — Applied to all non-static routes:
   - Content-Security-Policy (restricts script/style/img/media/connect/frame sources)
   - X-Frame-Options: DENY (prevents clickjacking)
