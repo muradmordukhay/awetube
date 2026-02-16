@@ -17,11 +17,13 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import { db } from "@/lib/db";
 import { generateUniqueHandle } from "@/lib/channel-utils";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: PrismaAdapter(db),
   trustHost: true,
   session: {
     strategy: "jwt",

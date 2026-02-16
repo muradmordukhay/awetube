@@ -10,13 +10,14 @@ datasource db {
 /// Core user account. Optional password (null for OAuth-only users).
 /// One-to-one with Channel (auto-created on first sign-in or registration).
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  image        String?
-  passwordHash String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  image         String?
+  emailVerified DateTime?
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   channel             Channel?
   accounts            Account[]
