@@ -6,7 +6,7 @@
  *
  * CSP uses 'unsafe-inline'/'unsafe-eval' because Next.js injects inline
  * scripts during hydration. Nonce-based CSP is a future follow-up.
- * img-src/media-src allowlist Qencode CDN, AWS, and Google/GitHub avatars.
+ * img-src/media-src allowlist Qencode CDN and AWS.
  */
 import { NextRequest, NextResponse } from "next/server";
 
@@ -14,7 +14,7 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://*.qencode.com https://*.amazonaws.com https://*.googleusercontent.com https://*.githubusercontent.com",
+  "img-src 'self' data: https://*.qencode.com https://*.amazonaws.com",
   "media-src 'self' https://*.qencode.com blob:",
   "connect-src 'self' https://*.qencode.com",
   "frame-ancestors 'none'",
