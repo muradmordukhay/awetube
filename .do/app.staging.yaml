@@ -30,7 +30,7 @@ services:
       timeout_seconds: 5
       success_threshold: 1
       failure_threshold: 3
-    run_command: npx prisma migrate deploy && node server.js
+    run_command: node ./node_modules/prisma/build/index.js migrate deploy && node server.js
     envs:
       # Build-time (NEXT_PUBLIC_* inlined by Next.js at build)
       - key: NEXT_PUBLIC_APP_URL
