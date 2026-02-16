@@ -25,12 +25,16 @@ services:
     instance_size_slug: apps-s-1vcpu-0.5gb
     health_check:
       http_path: /api/health
-      initial_delay_seconds: 15
+      initial_delay_seconds: 30
       period_seconds: 30
-      timeout_seconds: 5
+      timeout_seconds: 10
       success_threshold: 1
-      failure_threshold: 3
+      failure_threshold: 5
     envs:
+      # Auth.js host trust (required for non-Vercel deployments)
+      - key: AUTH_TRUST_HOST
+        value: "true"
+        type: GENERAL
       # Build-time (NEXT_PUBLIC_* inlined by Next.js at build)
       - key: NEXT_PUBLIC_APP_URL
         value: https://qa.awetube.ai
