@@ -59,26 +59,12 @@ jobs:
             < "${{ steps.spec.outputs.file }}" \
             | doctl apps update "${{ secrets.DO_APP_ID }}" --spec -
 
-      - name: Wait for deployment
+      - name: Force rebuild from latest code
         run: |
-          echo "Waiting for deployment to complete..."
-          for i in $(seq 1 60); do
-            STATUS=$(doctl apps list-deployments "${{ secrets.DO_APP_ID }}" --format Phase --no-header | head -1)
-            echo "  Attempt $i/60 — status: $STATUS"
-            if [ "$STATUS" = "ACTIVE" ]; then
-              echo "✓ Deployment successful"
-              exit 0
-            fi
-            if [ "$STATUS" = "ERROR" ] || [ "$STATUS" = "CANCELED" ]; then
-              echo "✗ Deployment failed with status: $STATUS"
-              echo "--- Build logs (last 30 lines) ---"
-              doctl apps logs "${{ secrets.DO_APP_ID }}" --type=build | tail -30
-              exit 1
-            fi
-            sleep 30
-          done
-          echo "✗ Deployment timed out after 30 minutes"
-          exit 1
+          echo "Triggering forced rebuild..."
+          doctl apps create-deployment "${{ secrets.DO_APP_ID }}" --force-rebuild --wait
+          echo "✓ Deployment complete"
+
 
       - name: Verify health check
         if: success()
