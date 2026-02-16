@@ -39,7 +39,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials, request) {
         if (!featureFlags.authEmailLinks) return null;
 
-        const token = credentials?.token;
+        const token =
+          typeof credentials?.token === "string" ? credentials.token : null;
         if (!token) return null;
 
         if (featureFlags.authRateLimit && request) {
