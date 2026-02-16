@@ -32,16 +32,15 @@ ENV NODE_ENV=production
 ENV AUTH_TRUST_HOST=true
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+
+# Full node_modules first (needed for prisma migrate deploy + all transitive deps).
+# Prisma v6 CLI pulls in @prisma/config → effect, c12, deepmerge-ts, etc.
+COPY --from=deps /app/node_modules ./node_modules
+
+# Next.js standalone output overwrites its own node_modules subset
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-# Prisma client (for queries)
-COPY --from=deps /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
-
-# Prisma CLI (for migrate deploy at startup)
-COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
 
 # Migration files
 COPY prisma ./prisma
@@ -49,4 +48,4 @@ COPY prisma ./prisma
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
-CMD ["sh", "-c", "node ./node_modules/prisma/build/index.js migrate deploy && node server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
