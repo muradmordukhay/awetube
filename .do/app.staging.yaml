@@ -17,7 +17,7 @@ services:
   - name: web
     github:
       repo: muradmordukhay/awetube
-      branch: develop
+      branch: main
       deploy_on_push: false
     dockerfile_path: Dockerfile
     http_port: 3000

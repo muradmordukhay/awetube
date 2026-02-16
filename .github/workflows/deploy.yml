@@ -60,6 +60,10 @@ jobs:
             < "${{ steps.spec.outputs.file }}" \
             | doctl apps update "${{ secrets.DO_APP_ID }}" --spec -
 
+      - name: Force rebuild
+        run: |
+          doctl apps create-deployment "${{ secrets.DO_APP_ID }}" --force-rebuild
+
       - name: Wait for deployment
         run: |
           echo "Waiting for deployment to complete..."
@@ -113,7 +117,9 @@ jobs:
           fi
           echo "Checking deployed commit at $URL/api/version ..."
           sleep 10
-          SHA=$(curl -sf "$URL/api/version" | sed -n 's/.*"sha":"\\([^"]*\\)".*/\\1/p')
+          RESP=$(curl -sS "$URL/api/version?t=$EXPECTED_SHA" || true)
+          echo "Response: $RESP"
+          SHA=$(echo "$RESP" | jq -r '.sha // empty')
           if [ -z "$SHA" ]; then
             echo "✗ Could not read commit SHA from /api/version"
             exit 1
