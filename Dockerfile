@@ -22,12 +22,14 @@ ENV NEXT_PUBLIC_QENCODE_PLAYER_LICENSE=$NEXT_PUBLIC_QENCODE_PLAYER_LICENSE
 # (real values are injected at runtime via environment variables)
 ENV NEXTAUTH_SECRET=build-placeholder
 ENV CALLBACK_SIGNING_SECRET=build-placeholder
+ENV AUTH_TRUST_HOST=true
 
 RUN npm run build
 
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV AUTH_TRUST_HOST=true
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
