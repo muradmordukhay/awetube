@@ -7,7 +7,6 @@ import Link from "next/link";
 import { Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { OAuthButtons } from "@/components/auth/OAuthButtons";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -61,19 +60,6 @@ export default function RegisterPage() {
         <div className="flex flex-col items-center gap-2">
           <Video className="h-10 w-10 text-red-600" />
           <h1 className="text-2xl font-bold">Create your account</h1>
-        </div>
-
-        <OAuthButtons />
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
-              Or continue with email
-            </span>
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

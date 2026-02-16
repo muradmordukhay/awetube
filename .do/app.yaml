@@ -70,13 +70,6 @@ services:
       - key: QENCODE_S3_REGION
         value: us-west
         type: GENERAL
-      # OAuth (Google)
-      - key: GOOGLE_CLIENT_ID
-        value: "${GOOGLE_CLIENT_ID}"
-        type: SECRET
-      - key: GOOGLE_CLIENT_SECRET
-        value: "${GOOGLE_CLIENT_SECRET}"
-        type: SECRET
       # Email (optional)
       - key: RESEND_API_KEY
         value: "${RESEND_API_KEY}"

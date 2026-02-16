@@ -31,10 +31,6 @@ const serverSchema = z.object({
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
   // Optional
-  GOOGLE_CLIENT_ID: z.string().optional(),
-  GOOGLE_CLIENT_SECRET: z.string().optional(),
-  GITHUB_CLIENT_ID: z.string().optional(),
-  GITHUB_CLIENT_SECRET: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   LOG_LEVEL: z.string().optional(),
 });
