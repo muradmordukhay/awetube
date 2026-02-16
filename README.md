@@ -11,7 +11,7 @@ A modern, open-source video sharing platform built with Next.js 16, React 19, an
 
 - **Video Upload & Streaming** — Resumable TUS uploads with automatic Qencode transcoding (1080p, 720p, 480p, 360p)
 - **Qencode Player** — Adaptive HLS streaming, quality selector, picture-in-picture, playback speed control
-- **Authentication** — Email/password registration + Google and GitHub OAuth
+- **Authentication** — Passwordless email sign-in (magic links)
 - **Channels** — Customizable profiles with name, handle, avatar, and banner
 - **Subscriptions & Feed** — Subscribe to channels, get a personalized feed of new uploads
 - **Notifications** — Real-time bell for new videos from subscriptions and comment replies
@@ -23,7 +23,6 @@ A modern, open-source video sharing platform built with Next.js 16, React 19, an
 - **Search** — Full-text search across video titles, descriptions, and channel names
 - **Trending** — Time-decayed popularity ranking
 - **Creator Studio** — Dashboard for managing uploaded videos with stats
-- **Password Reset** — Secure token-based password reset via email
 - **Error Handling** — Graceful degradation with per-section error states
 - **Responsive Design** — Mobile-first layout with collapsible sidebar
 
@@ -39,7 +38,7 @@ A modern, open-source video sharing platform built with Next.js 16, React 19, an
 - Multi-environment deployment (QA + Production)
 - CI/CD with GitHub Actions (secret scan, lint, typecheck, test, build, deploy)
 - Docker Compose for local development
-- 109 tests across 10 test files
+- 201 tests across 22 test files
 
 ## Architecture
 
@@ -113,11 +112,11 @@ Videos are uploaded via the TUS resumable protocol directly to Qencode S3 storag
 | UI | [React 19](https://react.dev/) + [TypeScript 5](https://www.typescriptlang.org/) | Type-safe UI development |
 | Styling | [Tailwind CSS 4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/) | Utility-first styling + component library |
 | Database | [PostgreSQL 16](https://www.postgresql.org/) + [Prisma 6](https://www.prisma.io/) | Relational DB with type-safe ORM |
-| Auth | [NextAuth v5](https://authjs.dev/) (JWT) | Email/password + OAuth (Google, GitHub) |
+| Auth | [NextAuth v5](https://authjs.dev/) (JWT) | Passwordless email links (magic links) |
 | Video | [Qencode](https://www.qencode.com/) | TUS upload, transcoding, S3 storage, CDN, HLS player |
 | Validation | [Zod 4](https://zod.dev/) | Runtime schema validation |
 | Data Fetching | [TanStack Query 5](https://tanstack.com/query) | Client-side data fetching + caching |
-| Email | [Resend](https://resend.com/) | Transactional emails (password reset) |
+| Email | [Resend](https://resend.com/) | Transactional emails (magic links) |
 | Logging | [Pino](https://getpino.io/) | Structured JSON logging (pretty in dev) |
 | Testing | [Vitest 4](https://vitest.dev/) | Unit and API testing |
 | CI/CD | [GitHub Actions](https://github.com/features/actions) | Automated testing + deployment |
@@ -130,7 +129,7 @@ Videos are uploaded via the TUS resumable protocol directly to Qencode S3 storag
 - [Node.js](https://nodejs.org/) 20+
 - [PostgreSQL](https://www.postgresql.org/) 16+ (or [Docker](https://www.docker.com/))
 - [Qencode](https://www.qencode.com/) account (API key, S3 bucket, player license)
-- [Resend](https://resend.com/) account (optional, for password reset emails)
+- [Resend](https://resend.com/) account (required for email sign-in links)
 
 ### Quick Start (Docker)
 
@@ -203,10 +202,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 | Endpoint | Methods | Auth | Description |
 |----------|---------|------|-------------|
-| `/api/auth/[...nextauth]` | GET, POST | — | NextAuth handler (login, session, OAuth) |
-| `/api/auth/register` | POST | — | User registration with email/password |
-| `/api/auth/forgot-password` | POST | — | Send password reset email |
-| `/api/auth/reset-password` | POST | — | Reset password with token |
+| `/api/auth/[...nextauth]` | GET, POST | — | NextAuth handler (login, session) |
+| `/api/auth/email-link` | POST | — | Send passwordless sign-in link |
+| `/api/auth/profile` | PATCH | — | Complete profile (display name) |
 
 ### Videos (7 routes)
 
@@ -315,7 +313,7 @@ awetube/
 │   └── seed.ts                   # Demo data seeder
 ├── src/
 │   ├── app/                      # Next.js App Router
-│   │   ├── (auth)/               #   Login, register, password reset
+│   │   ├── (auth)/               #   Login, verify, profile completion
 │   │   ├── api/                  #   31 API routes (see API Reference)
 │   │   │   ├── health/           #   Health check endpoint
 │   │   │   ├── upload/           #   TUS upload + Qencode integration

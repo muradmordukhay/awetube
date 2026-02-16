@@ -44,3 +44,30 @@ export async function sendPasswordResetEmail(
     `,
   });
 }
+
+export async function sendLoginLinkEmail(
+  email: string,
+  token: string
+): Promise<void> {
+  const loginUrl = `${APP_URL}/verify?token=${token}`;
+
+  await getResendClient().emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: "Sign in to AweTube",
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+        <h2>Sign in to AweTube</h2>
+        <p>Click the link below to securely sign in. This link expires in 1 hour.</p>
+        <p>
+          <a href="${loginUrl}" style="display: inline-block; padding: 12px 24px; background: #dc2626; color: white; text-decoration: none; border-radius: 6px;">
+            Sign in
+          </a>
+        </p>
+        <p style="color: #666; font-size: 14px;">
+          If you didn't request this, you can safely ignore this email.
+        </p>
+      </div>
+    `,
+  });
+}

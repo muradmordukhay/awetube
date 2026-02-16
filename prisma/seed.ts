@@ -28,6 +28,7 @@ async function main() {
   await prisma.comment.deleteMany();
   await prisma.video.deleteMany();
   await prisma.channel.deleteMany();
+  await prisma.loginToken.deleteMany();
   await prisma.passwordResetToken.deleteMany();
   await prisma.user.deleteMany();
 
