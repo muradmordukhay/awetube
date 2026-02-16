@@ -22,6 +22,7 @@ import { db } from "@/lib/db";
 import { generateUniqueHandle } from "@/lib/channel-utils";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   session: {
     strategy: "jwt",
   },
