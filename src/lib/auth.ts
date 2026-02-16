@@ -76,24 +76,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  events: {
+    async createUser({ user }) {
+      // Auto-create channel for new OAuth users
+      if (user.id && user.name) {
+        const handle = await generateUniqueHandle(user.name);
+        await db.channel.create({
+          data: {
+            userId: user.id,
+            handle,
+            name: user.name,
+            avatarUrl: user.image || null,
+          },
+        });
+      }
+    },
+  },
   callbacks: {
     async signIn({ user, account }) {
-      // For OAuth: auto-create channel if user doesn't have one
+      // For returning OAuth users: ensure they have a channel.
+      // New users are handled by the createUser event (runs after adapter persists the user).
       if (account?.provider !== "credentials" && user.id) {
-        const existingChannel = await db.channel.findUnique({
-          where: { userId: user.id },
-        });
-
-        if (!existingChannel && user.name) {
-          const handle = await generateUniqueHandle(user.name);
-          await db.channel.create({
-            data: {
-              userId: user.id,
-              handle,
-              name: user.name,
-              avatarUrl: user.image || null,
-            },
+        const dbUser = await db.user.findUnique({ where: { id: user.id } });
+        if (dbUser) {
+          const existingChannel = await db.channel.findUnique({
+            where: { userId: user.id },
           });
+
+          if (!existingChannel && user.name) {
+            const handle = await generateUniqueHandle(user.name);
+            await db.channel.create({
+              data: {
+                userId: user.id,
+                handle,
+                name: user.name,
+                avatarUrl: user.image || null,
+              },
+            });
+          }
         }
       }
       return true;
