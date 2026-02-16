@@ -15,6 +15,13 @@ export async function GET(req: Request) {
       status: "ok",
       db: "connected",
       timestamp: new Date().toISOString(),
+      _debug_auth: {
+        AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST ?? "NOT_SET",
+        AUTH_URL: process.env.AUTH_URL ?? "NOT_SET",
+        NEXTAUTH_URL: process.env.NEXTAUTH_URL ?? "NOT_SET",
+        HAS_NEXTAUTH_SECRET: !!process.env.NEXTAUTH_SECRET,
+        NODE_ENV: process.env.NODE_ENV ?? "NOT_SET",
+      },
     });
   } catch {
     return NextResponse.json(
