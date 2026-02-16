@@ -81,6 +81,7 @@ Go to your repo **Settings > Secrets and variables > Actions**.
 | `QENCODE_S3_BUCKET` | Qencode dashboard > Media Storage |
 | `NEXT_PUBLIC_QENCODE_PLAYER_LICENSE` | Qencode dashboard > Player |
 | `RESEND_API_KEY` | Resend dashboard > API Keys (required for email links) |
+| `GIT_SHA` | Set automatically by GitHub Actions (deployment verification) |
 
 **Environment secrets** (Settings > Environments):
 

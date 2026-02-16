@@ -36,6 +36,7 @@ const serverSchema = z.object({
   // Optional
   RESEND_API_KEY: z.string().optional(),
   LOG_LEVEL: z.string().optional(),
+  GIT_SHA: z.string().optional(),
 
   // App
   NEXT_PUBLIC_APP_URL: z.string().url().min(1, "NEXT_PUBLIC_APP_URL is required"),
