@@ -19,6 +19,7 @@ process.env.QENCODE_API_KEY = "test-qencode-key";
 process.env.QENCODE_API_ENDPOINT = "https://api.qencode.com";
 process.env.NEXT_PUBLIC_QENCODE_PLAYER_LICENSE = "test-player-license";
 process.env.NEXTAUTH_SECRET = "test-nextauth-secret";
+process.env.GIT_SHA = "test-sha";
 
 // Mock Prisma client
 vi.mock("@/lib/db", () => {
