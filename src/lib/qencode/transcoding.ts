@@ -2,7 +2,7 @@
  * Qencode transcoding job configuration.
  *
  * Each upload → 4 adaptive HLS streams (1080p/720p/480p/360p) + thumbnail
- * at the 5-second mark. Output path: videos/{videoId}/hls and videos/{videoId}/thumbs
+ * at the 10% mark. Output path: videos/{videoId}/hls and videos/{videoId}/thumbs
  *
  * The callback_url is HMAC-signed with a timestamp for replay protection.
  */
@@ -54,7 +54,7 @@ export function buildTranscodingQuery(
           destination: { url: `${baseUrl}/thumbs` },
           width: 1280,
           height: 720,
-          time: 5,
+          time: 0.1,
         },
       ],
       callback_url: callbackUrl,
