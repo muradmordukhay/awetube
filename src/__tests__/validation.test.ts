@@ -83,11 +83,20 @@ describe("uploadInitiateSchema", () => {
 });
 
 describe("startTranscodeSchema", () => {
-  it("accepts valid input", () => {
+  it("accepts valid input with https URL", () => {
     const result = startTranscodeSchema.safeParse({
       videoId: "abc123",
       taskToken: "token123",
       tusUri: "https://upload.example.com/file",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid input with tus: URI", () => {
+    const result = startTranscodeSchema.safeParse({
+      videoId: "abc123",
+      taskToken: "token123",
+      tusUri: "tus:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     });
     expect(result.success).toBe(true);
   });
@@ -97,6 +106,15 @@ describe("startTranscodeSchema", () => {
       videoId: "abc123",
       taskToken: "token123",
       tusUri: "not-a-url",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects empty tusUri", () => {
+    const result = startTranscodeSchema.safeParse({
+      videoId: "abc123",
+      taskToken: "token123",
+      tusUri: "",
     });
     expect(result.success).toBe(false);
   });

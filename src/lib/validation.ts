@@ -18,7 +18,13 @@ export const uploadInitiateSchema = z.object({
 export const startTranscodeSchema = z.object({
   videoId: z.string().min(1, "videoId is required"),
   taskToken: z.string().min(1, "taskToken is required"),
-  tusUri: z.string().url("tusUri must be a valid URL"),
+  tusUri: z
+    .string()
+    .min(1, "tusUri is required")
+    .refine(
+      (val) => val.startsWith("tus:") || z.string().url().safeParse(val).success,
+      { message: "tusUri must be a tus: URI or valid URL" }
+    ),
 });
 
 export const callbackSchema = z.object({
