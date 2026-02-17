@@ -19,17 +19,49 @@ export default function UploadPage() {
   const [error, setError] = useState("");
   const [videoId, setVideoId] = useState("");
 
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const selected = e.target.files?.[0];
-      if (selected) {
-        setFile(selected);
-        if (!title) {
-          setTitle(selected.name.replace(/\.[^/.]+$/, ""));
-        }
+  const [dragging, setDragging] = useState(false);
+
+  const acceptFile = useCallback(
+    (selected: File) => {
+      setFile(selected);
+      if (!title) {
+        setTitle(selected.name.replace(/\.[^/.]+$/, ""));
       }
     },
     [title]
+  );
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selected = e.target.files?.[0];
+      if (selected) acceptFile(selected);
+    },
+    [acceptFile]
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragging(false);
+      const dropped = e.dataTransfer.files[0];
+      if (dropped && dropped.type.startsWith("video/")) {
+        acceptFile(dropped);
+      }
+    },
+    [acceptFile]
   );
 
   const handleUpload = async () => {
@@ -113,11 +145,21 @@ export default function UploadPage() {
       {step === "select" && (
         <div className="space-y-6">
           {/* File drop zone */}
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/50 p-12 transition-colors hover:border-muted-foreground/50">
-            <Upload className="h-12 w-12 text-muted-foreground" />
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+          <label
+            className={`flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed p-12 transition-colors ${
+              dragging
+                ? "border-primary bg-primary/10"
+                : "border-muted-foreground/25 bg-muted/50 hover:border-muted-foreground/50"
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <Upload className={`h-12 w-12 ${dragging ? "text-primary" : "text-muted-foreground"}`} />
             <div className="text-center">
               <p className="text-sm font-medium">
-                {file ? file.name : "Click to select a video file"}
+                {file ? file.name : "Drag and drop a video, or click to browse"}
               </p>
               <p className="text-xs text-muted-foreground">
                 MP4, WebM, MOV up to 5GB
