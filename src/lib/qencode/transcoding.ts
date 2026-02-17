@@ -2,7 +2,7 @@
  * Qencode transcoding job configuration.
  *
  * Each upload → 4 adaptive HLS streams (1080p/720p/480p/360p) + thumbnail
- * at the 5-second mark. Output path: videos/{videoId}/hls/ and videos/{videoId}/thumbs/
+ * at the 5-second mark. Output path: videos/{videoId}/hls and videos/{videoId}/thumbs
  *
  * The callback_url is HMAC-signed with a timestamp for replay protection.
  */
@@ -13,7 +13,7 @@ export function buildTranscodingQuery(
 ) {
   const bucket = process.env.QENCODE_S3_BUCKET!;
   const region = process.env.QENCODE_S3_REGION || "us-west";
-  const baseUrl = `s3://${region}.s3.qencode.com/${bucket}/videos/${videoId}/`;
+  const baseUrl = `s3://${region}.s3.qencode.com/${bucket}/videos/${videoId}`;
 
   return {
     query: {
@@ -21,7 +21,7 @@ export function buildTranscodingQuery(
       format: [
         {
           output: "advanced_hls",
-          destination: { url: `${baseUrl}hls/` },
+          destination: { url: `${baseUrl}/hls` },
           stream: [
             {
               size: "1920x1080",
@@ -51,7 +51,7 @@ export function buildTranscodingQuery(
         },
         {
           output: "thumbnail",
-          destination: { url: `${baseUrl}thumbs/` },
+          destination: { url: `${baseUrl}/thumbs` },
           width: 1280,
           height: 720,
           time: 5,
