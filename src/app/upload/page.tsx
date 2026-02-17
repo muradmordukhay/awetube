@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, FileVideo, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { uploadFileViaTus } from "@/lib/tus-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +21,13 @@ export default function UploadPage() {
   const [videoId, setVideoId] = useState("");
 
   const [dragging, setDragging] = useState(false);
+  const abortRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.();
+    };
+  }, []);
 
   const acceptFile = useCallback(
     (selected: File) => {
@@ -86,52 +94,31 @@ export default function UploadPage() {
       const { videoId: vid, uploadUrl, taskToken } = await initRes.json();
       setVideoId(vid);
 
-      // Step 2: Upload file via tus protocol
-      // For simplicity, using a basic XHR upload to the Qencode upload URL
-      // In production, use tus-js-client for resumable uploads
-      const formData = new FormData();
-      formData.append("file", file);
-
-      await new Promise<string>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", uploadUrl);
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            setProgress(Math.round((e.loaded / e.total) * 100));
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              resolve(data.tus_uri || `tus:${data.upload_id || ""}`);
-            } catch {
-              resolve(xhr.responseText);
-            }
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error("Upload failed"));
-        xhr.send(formData);
-      }).then(async (tusUri) => {
-        // Step 3: Start transcoding
-        setStep("processing");
-        const transcodeRes = await fetch("/api/upload/start-transcode", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ videoId: vid, taskToken, tusUri }),
-        });
-
-        if (!transcodeRes.ok) {
-          throw new Error("Failed to start transcoding");
-        }
-
-        setStep("done");
+      // Step 2: Upload file via TUS resumable protocol
+      const { promise: uploadPromise, abort } = uploadFileViaTus({
+        file,
+        uploadUrl,
+        taskToken,
+        onProgress: (percent) => setProgress(percent),
       });
+      abortRef.current = abort;
+
+      const { tusUri } = await uploadPromise;
+
+      // Step 3: Start transcoding
+      setStep("processing");
+      const transcodeRes = await fetch("/api/upload/start-transcode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId: vid, taskToken, tusUri }),
+      });
+
+      if (!transcodeRes.ok) {
+        const data = await transcodeRes.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to start transcoding");
+      }
+
+      setStep("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
       setStep("error");
