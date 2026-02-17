@@ -135,8 +135,8 @@ export const authLimiter = createLimiter("auth", {
   maxRequests: 10,
 });
 export const emailLinkLimiter = createLimiter("emailLink", {
-  windowMs: 15 * 60 * 1000,
-  maxRequests: 5,
+  windowMs: 60 * 1000,
+  maxRequests: 30,
 });
 export const uploadLimiter = createLimiter("upload", {
   windowMs: 60 * 60 * 1000,
