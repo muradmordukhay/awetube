@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@awetube.com";
+const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@awetube.ai";
 
 let resend: Resend | null = null;
 
