@@ -20,6 +20,7 @@ import { authLimiter, getClientIp } from "@/lib/rate-limit";
 import { featureFlags } from "@/lib/feature-flags";
 import { deriveDisplayName, normalizeEmail } from "@/lib/auth-utils";
 import { generateUniqueHandle } from "@/lib/channel-utils";
+import { jwtCallback } from "@/lib/auth-callbacks";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -117,18 +118,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.channelId = (user as Record<string, unknown>).channelId ?? null;
-        token.channelHandle =
-          (user as Record<string, unknown>).channelHandle ?? null;
-        token.needsDisplayName =
-          (user as Record<string, unknown>).needsDisplayName ?? false;
-      }
-
-      return token;
-    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    jwt: jwtCallback as any,
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
