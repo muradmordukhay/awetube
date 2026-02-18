@@ -53,8 +53,16 @@ describe("toCdnUrl", () => {
     expect(toCdnUrl(cdnUrl)).toBe(cdnUrl);
   });
 
-  it("returns empty string unchanged", () => {
-    expect(toCdnUrl("")).toBe("");
+  it("returns null for empty string", () => {
+    expect(toCdnUrl("")).toBeNull();
+  });
+
+  it("returns null for null input", () => {
+    expect(toCdnUrl(null)).toBeNull();
+  });
+
+  it("returns null for undefined input", () => {
+    expect(toCdnUrl(undefined)).toBeNull();
   });
 
   it("handles http:// S3 URLs", () => {

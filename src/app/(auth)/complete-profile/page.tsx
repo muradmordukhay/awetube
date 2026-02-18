@@ -53,7 +53,6 @@ export default function CompleteProfilePage() {
 
       await update?.();
       router.replace("/");
-      router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

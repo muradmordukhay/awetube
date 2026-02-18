@@ -1,14 +1,22 @@
 /**
- * Security headers middleware.
+ * Next.js middleware — runs on every non-static request.
  *
- * Applied to every non-static request. Defends against XSS, clickjacking,
- * MIME sniffing, and protocol downgrade attacks.
+ * Responsibilities:
+ * 1. Profile-completion redirect: authenticated users with needsDisplayName=true
+ *    are redirected to /complete-profile before accessing protected pages.
+ * 2. Security headers: CSP, X-Frame-Options, etc. applied to all responses.
+ *
+ * Moving the profile-completion redirect here (vs. AppShell.tsx useEffect)
+ * prevents render flashes and makes the redirect testable without React.
  *
  * CSP uses 'unsafe-inline'/'unsafe-eval' because Next.js injects inline
  * scripts during hydration. Nonce-based CSP is a future follow-up.
  * img-src/media-src allowlist Qencode CDN and AWS.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { auth } from "@/lib/auth";
+import type { Session } from "next-auth";
 
 const CSP = [
   "default-src 'self'",
@@ -20,10 +28,18 @@ const CSP = [
   "frame-ancestors 'none'",
 ].join("; ");
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function middleware(_req: NextRequest) {
-  const response = NextResponse.next();
+const COMPLETE_PROFILE_ALLOWED = new Set([
+  "/login",
+  "/register",
+  "/verify",
+  "/complete-profile",
+  "/forgot-password",
+]);
 
+/**
+ * Applies security response headers. Exported for unit testing.
+ */
+export function applySecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set("Content-Security-Policy", CSP);
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
@@ -36,9 +52,33 @@ export function middleware(_req: NextRequest) {
     "Strict-Transport-Security",
     "max-age=63072000; includeSubDomains; preload"
   );
-
   return response;
 }
+
+/**
+ * Core middleware logic. Exported for unit testing without NextAuth wrapping.
+ */
+export function middleware(
+  req: NextRequest,
+  session: Session | null = null
+): NextResponse {
+  const { pathname } = req.nextUrl;
+
+  if (
+    session?.user?.needsDisplayName &&
+    !COMPLETE_PROFILE_ALLOWED.has(pathname)
+  ) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/complete-profile";
+    return applySecurityHeaders(NextResponse.redirect(url));
+  }
+
+  return applySecurityHeaders(NextResponse.next());
+}
+
+export default auth(function (req: NextRequest & { auth: Session | null }) {
+  return middleware(req, req.auth);
+});
 
 export const config = {
   matcher: [

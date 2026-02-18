@@ -56,7 +56,7 @@ export default function NotificationItem({
     if (!notification.read) {
       fetch(`/api/notifications/${notification.id}`, {
         method: "PATCH",
-      }).catch(() => {});
+      }).catch((err) => console.warn("Failed to mark notification as read", err));
     }
     onClose();
   }

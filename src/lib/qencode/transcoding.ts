@@ -11,7 +11,8 @@ export function buildTranscodingQuery(
   videoId: string,
   callbackUrl: string
 ) {
-  const bucket = process.env.QENCODE_S3_BUCKET!;
+  const bucket = process.env.QENCODE_S3_BUCKET;
+  if (!bucket) throw new Error("QENCODE_S3_BUCKET is not set");
   const region = process.env.QENCODE_S3_REGION || "us-west";
   const baseUrl = `s3://${region}.s3.qencode.com/${bucket}/videos/${videoId}`;
 

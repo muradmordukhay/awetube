@@ -118,16 +118,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    jwt: jwtCallback as any,
+    jwt: jwtCallback,
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.channelId = (token.channelId as string | null) ?? null;
-        session.user.channelHandle =
-          (token.channelHandle as string | null) ?? null;
-        session.user.needsDisplayName =
-          (token.needsDisplayName as boolean | null) ?? false;
+        session.user.id = token.id;
+        session.user.channelId = token.channelId ?? null;
+        session.user.channelHandle = token.channelHandle ?? null;
+        session.user.needsDisplayName = token.needsDisplayName ?? false;
       }
       return session;
     },

@@ -50,7 +50,7 @@ export default function usePlaybackProgress({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ videoId, progressSeconds: current }),
-      }).catch(() => {});
+      }).catch((err) => console.warn("Failed to save playback progress", err));
     }
 
     // Save every 10 seconds during playback

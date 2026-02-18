@@ -9,6 +9,12 @@ declare module "next-auth" {
       needsDisplayName: boolean;
     } & DefaultSession["user"];
   }
+
+  interface User {
+    channelId?: string | null;
+    channelHandle?: string | null;
+    needsDisplayName?: boolean | null;
+  }
 }
 
 declare module "next-auth/jwt" {
