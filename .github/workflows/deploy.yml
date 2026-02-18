@@ -43,12 +43,10 @@ jobs:
             echo "file=.do/app.staging.yaml" >> "$GITHUB_OUTPUT"
           fi
 
-      # Substitute secret placeholders and deploy.
+      # Substitute secret placeholders and update the app spec.
       # Uses explicit var list so ${db.DATABASE_URL} (a DO internal ref) is NOT replaced.
       # GitHub Actions automatically masks secret values in log output.
-      # doctl apps update automatically triggers a new deployment — no force-rebuild needed.
-      - name: Deploy to DigitalOcean App Platform
-        id: deploy
+      - name: Update app spec
         env:
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           CALLBACK_SIGNING_SECRET: ${{ secrets.CALLBACK_SIGNING_SECRET }}
@@ -61,20 +59,23 @@ jobs:
           envsubst '$NEXTAUTH_SECRET $CALLBACK_SIGNING_SECRET $QENCODE_API_KEY $QENCODE_S3_BUCKET $NEXT_PUBLIC_QENCODE_PLAYER_LICENSE $RESEND_API_KEY $GIT_SHA' \
             < "${{ steps.spec.outputs.file }}" \
             | doctl apps update "${{ secrets.DO_APP_ID }}" --spec -
-          # Capture the deployment ID triggered by the spec update so we can
-          # poll it specifically (avoids mistakenly tracking a stale deployment).
+
+      # Force rebuild ensures DO pulls the latest commit even if the spec didn't change.
+      # Capture the deployment ID from THIS step (not the spec update) since force-rebuild
+      # supersedes the spec-update deployment.
+      - name: Force rebuild
+        id: rebuild
+        run: |
+          doctl apps create-deployment "${{ secrets.DO_APP_ID }}" --force-rebuild
+          sleep 5
           DEPLOY_ID=$(doctl apps list-deployments "${{ secrets.DO_APP_ID }}" \
             --format ID --no-header | head -1)
           echo "deploy_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
           echo "Triggered deployment: $DEPLOY_ID"
 
-      - name: Force rebuild
-        run: |
-          doctl apps create-deployment "${{ secrets.DO_APP_ID }}" --force-rebuild
-
       - name: Wait for deployment
         run: |
-          DEPLOY_ID="${{ steps.deploy.outputs.deploy_id }}"
+          DEPLOY_ID="${{ steps.rebuild.outputs.deploy_id }}"
           echo "Polling deployment $DEPLOY_ID ..."
           for i in $(seq 1 40); do
             STATUS=$(doctl apps get-deployment "${{ secrets.DO_APP_ID }}" "$DEPLOY_ID" \
@@ -101,7 +102,11 @@ jobs:
           EXPECTED_SHA: ${{ github.sha }}
         run: |
           ENV="${{ github.event.inputs.environment || 'qa' }}"
-          URL=$( [ "$ENV" = "production" ] && echo "https://awetube.ai" || echo "https://qa.awetube.ai" )
+          if [ "$ENV" = "production" ]; then
+            URL="https://awetube.ai"
+          else
+            URL="https://qa.awetube.ai"
+          fi
           sleep 15
 
           # Health check
@@ -112,20 +117,6 @@ jobs:
           echo "✓ Health check passed"
 
           # SHA check
-          echo "Checking deployed commit at $URL/api/version ..."
-          RESP=$(curl -sS "$URL/api/version" || true)
-          echo "Version response: $RESP"
-      - name: Verify deployed commit hash
-        if: success()
-        env:
-          EXPECTED_SHA: ${{ github.sha }}
-        run: |
-          ENV="${{ github.event.inputs.environment || 'qa' }}"
-          if [ "$ENV" = "production" ]; then
-            URL="https://awetube.ai"
-          else
-            URL="https://qa.awetube.ai"
-          fi
           echo "Checking deployed commit at $URL/api/version ..."
           sleep 10
           RESP=$(curl -sS "$URL/api/version?t=$EXPECTED_SHA" || true)
