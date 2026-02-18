@@ -68,6 +68,10 @@ jobs:
           echo "deploy_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
           echo "Triggered deployment: $DEPLOY_ID"
 
+      - name: Force rebuild
+        run: |
+          doctl apps create-deployment "${{ secrets.DO_APP_ID }}" --force-rebuild
+
       - name: Wait for deployment
         run: |
           DEPLOY_ID="${{ steps.deploy.outputs.deploy_id }}"
@@ -111,6 +115,21 @@ jobs:
           echo "Checking deployed commit at $URL/api/version ..."
           RESP=$(curl -sS "$URL/api/version" || true)
           echo "Version response: $RESP"
+      - name: Verify deployed commit hash
+        if: success()
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          ENV="${{ github.event.inputs.environment || 'qa' }}"
+          if [ "$ENV" = "production" ]; then
+            URL="https://awetube.ai"
+          else
+            URL="https://qa.awetube.ai"
+          fi
+          echo "Checking deployed commit at $URL/api/version ..."
+          sleep 10
+          RESP=$(curl -sS "$URL/api/version?t=$EXPECTED_SHA" || true)
+          echo "Response: $RESP"
           SHA=$(echo "$RESP" | jq -r '.sha // empty')
           if [ -z "$SHA" ]; then
             echo "✗ Could not read commit SHA from /api/version"
