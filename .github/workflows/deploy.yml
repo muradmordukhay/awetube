@@ -46,7 +46,9 @@ jobs:
       # Substitute secret placeholders and deploy.
       # Uses explicit var list so ${db.DATABASE_URL} (a DO internal ref) is NOT replaced.
       # GitHub Actions automatically masks secret values in log output.
+      # doctl apps update automatically triggers a new deployment — no force-rebuild needed.
       - name: Deploy to DigitalOcean App Platform
+        id: deploy
         env:
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           CALLBACK_SIGNING_SECRET: ${{ secrets.CALLBACK_SIGNING_SECRET }}
@@ -59,17 +61,21 @@ jobs:
           envsubst '$NEXTAUTH_SECRET $CALLBACK_SIGNING_SECRET $QENCODE_API_KEY $QENCODE_S3_BUCKET $NEXT_PUBLIC_QENCODE_PLAYER_LICENSE $RESEND_API_KEY $GIT_SHA' \
             < "${{ steps.spec.outputs.file }}" \
             | doctl apps update "${{ secrets.DO_APP_ID }}" --spec -
-
-      - name: Force rebuild
-        run: |
-          doctl apps create-deployment "${{ secrets.DO_APP_ID }}" --force-rebuild
+          # Capture the deployment ID triggered by the spec update so we can
+          # poll it specifically (avoids mistakenly tracking a stale deployment).
+          DEPLOY_ID=$(doctl apps list-deployments "${{ secrets.DO_APP_ID }}" \
+            --format ID --no-header | head -1)
+          echo "deploy_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
+          echo "Triggered deployment: $DEPLOY_ID"
 
       - name: Wait for deployment
         run: |
-          echo "Waiting for deployment to complete..."
-          for i in $(seq 1 60); do
-            STATUS=$(doctl apps list-deployments "${{ secrets.DO_APP_ID }}" --format Phase --no-header | head -1)
-            echo "  Attempt $i/60 — status: $STATUS"
+          DEPLOY_ID="${{ steps.deploy.outputs.deploy_id }}"
+          echo "Polling deployment $DEPLOY_ID ..."
+          for i in $(seq 1 40); do
+            STATUS=$(doctl apps get-deployment "${{ secrets.DO_APP_ID }}" "$DEPLOY_ID" \
+              --format Phase --no-header)
+            echo "  Attempt $i/40 — status: $STATUS"
             if [ "$STATUS" = "ACTIVE" ]; then
               echo "✓ Deployment successful"
               exit 0
@@ -80,45 +86,31 @@ jobs:
               doctl apps logs "${{ secrets.DO_APP_ID }}" --type=build | tail -30
               exit 1
             fi
-            sleep 30
+            sleep 15
           done
-          echo "✗ Deployment timed out after 30 minutes"
+          echo "✗ Deployment timed out after 10 minutes"
           exit 1
 
-
-
-
-      - name: Verify health check
-        if: success()
-        run: |
-          ENV="${{ github.event.inputs.environment || 'qa' }}"
-          if [ "$ENV" = "production" ]; then
-            URL="https://awetube.ai"
-          else
-            URL="https://qa.awetube.ai"
-          fi
-          echo "Checking health at $URL/api/health ..."
-          sleep 10
-          RESPONSE=$(curl -sf "$URL/api/health" || echo '{"status":"error"}')
-          echo "Response: $RESPONSE"
-          echo "$RESPONSE" | grep -q '"status":"ok"' || { echo "✗ Health check failed"; exit 1; }
-          echo "✓ Health check passed"
-
-      - name: Verify deployed commit hash
+      - name: Verify deployment
         if: success()
         env:
           EXPECTED_SHA: ${{ github.sha }}
         run: |
           ENV="${{ github.event.inputs.environment || 'qa' }}"
-          if [ "$ENV" = "production" ]; then
-            URL="https://awetube.ai"
-          else
-            URL="https://qa.awetube.ai"
-          fi
+          URL=$( [ "$ENV" = "production" ] && echo "https://awetube.ai" || echo "https://qa.awetube.ai" )
+          sleep 15
+
+          # Health check
+          echo "Checking health at $URL/api/health ..."
+          HEALTH=$(curl -sf "$URL/api/health" || echo '{"status":"error"}')
+          echo "Health response: $HEALTH"
+          echo "$HEALTH" | grep -q '"status":"ok"' || { echo "✗ Health check failed"; exit 1; }
+          echo "✓ Health check passed"
+
+          # SHA check
           echo "Checking deployed commit at $URL/api/version ..."
-          sleep 10
-          RESP=$(curl -sS "$URL/api/version?t=$EXPECTED_SHA" || true)
-          echo "Response: $RESP"
+          RESP=$(curl -sS "$URL/api/version" || true)
+          echo "Version response: $RESP"
           SHA=$(echo "$RESP" | jq -r '.sha // empty')
           if [ -z "$SHA" ]; then
             echo "✗ Could not read commit SHA from /api/version"
