@@ -114,7 +114,7 @@ export async function POST(
           session.user.id,
           videoId,
           comment.id
-        ).catch(() => {});
+        ).catch((err) => logger.warn({ err }, "Failed to notify comment reply"));
       }
     }
 

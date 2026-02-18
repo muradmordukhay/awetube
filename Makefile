@@ -7,8 +7,8 @@ dev: ## Start Next.js dev server (requires local DB)
 
 up: ## Start PostgreSQL, apply migrations, and run dev server
 	docker compose up -d db
-	@echo "Waiting for PostgreSQL..."
-	@sleep 2
+	@echo "Waiting for PostgreSQL to be ready..."
+	@until docker compose exec db pg_isready -U awetube -d awetube > /dev/null 2>&1; do sleep 1; done
 	npx prisma migrate deploy
 	npm run dev
 
@@ -27,7 +27,7 @@ migrate-deploy: ## Apply pending migrations (non-interactive)
 	npx prisma migrate deploy
 
 studio: ## Open Prisma Studio
-	npx prisma studio
+	./node_modules/.bin/prisma studio
 
 ## Quality
 
@@ -36,6 +36,14 @@ test: ## Run tests
 
 lint: ## Run linter
 	npm run lint
+
+typecheck: ## Run TypeScript type checker
+	npx tsc --noEmit
+
+check: ## Run lint, typecheck, and tests
+	npm run lint
+	npx tsc --noEmit
+	npm test
 
 build: ## Production build
 	npm run build

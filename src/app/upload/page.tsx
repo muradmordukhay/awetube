@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, FileVideo, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { uploadFileViaTus } from "@/lib/tus-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,17 +20,56 @@ export default function UploadPage() {
   const [error, setError] = useState("");
   const [videoId, setVideoId] = useState("");
 
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const selected = e.target.files?.[0];
-      if (selected) {
-        setFile(selected);
-        if (!title) {
-          setTitle(selected.name.replace(/\.[^/.]+$/, ""));
-        }
+  const [dragging, setDragging] = useState(false);
+  const abortRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.();
+    };
+  }, []);
+
+  const acceptFile = useCallback(
+    (selected: File) => {
+      setFile(selected);
+      if (!title) {
+        setTitle(selected.name.replace(/\.[^/.]+$/, ""));
       }
     },
     [title]
+  );
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selected = e.target.files?.[0];
+      if (selected) acceptFile(selected);
+    },
+    [acceptFile]
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragging(false);
+      const dropped = e.dataTransfer.files[0];
+      if (dropped && dropped.type.startsWith("video/")) {
+        acceptFile(dropped);
+      }
+    },
+    [acceptFile]
   );
 
   const handleUpload = async () => {
@@ -51,55 +91,34 @@ export default function UploadPage() {
         throw new Error(data.error || "Failed to initiate upload");
       }
 
-      const { videoId: vid, uploadUrl, taskToken } = await initRes.json();
-      setVideoId(vid);
+      const { videoId, uploadUrl, taskToken } = await initRes.json();
+      setVideoId(videoId);
 
-      // Step 2: Upload file via tus protocol
-      // For simplicity, using a basic XHR upload to the Qencode upload URL
-      // In production, use tus-js-client for resumable uploads
-      const formData = new FormData();
-      formData.append("file", file);
-
-      await new Promise<string>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", uploadUrl);
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            setProgress(Math.round((e.loaded / e.total) * 100));
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              resolve(data.tus_uri || `tus:${data.upload_id || ""}`);
-            } catch {
-              resolve(xhr.responseText);
-            }
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error("Upload failed"));
-        xhr.send(formData);
-      }).then(async (tusUri) => {
-        // Step 3: Start transcoding
-        setStep("processing");
-        const transcodeRes = await fetch("/api/upload/start-transcode", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ videoId: vid, taskToken, tusUri }),
-        });
-
-        if (!transcodeRes.ok) {
-          throw new Error("Failed to start transcoding");
-        }
-
-        setStep("done");
+      // Step 2: Upload file via TUS resumable protocol
+      const { promise: uploadPromise, abort } = uploadFileViaTus({
+        file,
+        uploadUrl,
+        taskToken,
+        onProgress: (percent) => setProgress(percent),
       });
+      abortRef.current = abort;
+
+      const { tusUri } = await uploadPromise;
+
+      // Step 3: Start transcoding
+      setStep("processing");
+      const transcodeRes = await fetch("/api/upload/start-transcode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId, taskToken, tusUri }),
+      });
+
+      if (!transcodeRes.ok) {
+        const data = await transcodeRes.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to start transcoding");
+      }
+
+      setStep("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
       setStep("error");
@@ -113,11 +132,21 @@ export default function UploadPage() {
       {step === "select" && (
         <div className="space-y-6">
           {/* File drop zone */}
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/50 p-12 transition-colors hover:border-muted-foreground/50">
-            <Upload className="h-12 w-12 text-muted-foreground" />
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+          <label
+            className={`flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed p-12 transition-colors ${
+              dragging
+                ? "border-primary bg-primary/10"
+                : "border-muted-foreground/25 bg-muted/50 hover:border-muted-foreground/50"
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <Upload className={`h-12 w-12 ${dragging ? "text-primary" : "text-muted-foreground"}`} />
             <div className="text-center">
               <p className="text-sm font-medium">
-                {file ? file.name : "Click to select a video file"}
+                {file ? file.name : "Drag and drop a video, or click to browse"}
               </p>
               <p className="text-xs text-muted-foreground">
                 MP4, WebM, MOV up to 5GB

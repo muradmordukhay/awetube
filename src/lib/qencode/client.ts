@@ -13,6 +13,20 @@ import type {
   QencodeCreateTaskResponse,
   QencodeStatusResponse,
 } from "./types";
+import { UPLOAD, TOKEN } from "@/lib/constants";
+
+/** Wraps fetch with an AbortController timeout. */
+function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number = UPLOAD.QENCODE_FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(timer)
+  );
+}
 
 class QencodeClient {
   private apiKey: string | null = null;
@@ -33,22 +47,24 @@ class QencodeClient {
 
   private async getAccessToken(): Promise<string> {
     this.ensureConfigured();
-    // Reuse token if still valid (with 5 min buffer)
+    // Reuse token if still valid (with 5-min buffer).
+    const bufferMs = TOKEN.QENCODE_TOKEN_REFRESH_BUFFER_S * 1000;
     if (
       this.accessToken &&
       this.tokenExpiry &&
-      this.tokenExpiry > new Date(Date.now() + 5 * 60 * 1000)
+      this.tokenExpiry > new Date(Date.now() + bufferMs)
     ) {
       return this.accessToken;
     }
 
     const params = new URLSearchParams({ api_key: this.apiKey! });
-    const res = await fetch(`${this.endpoint}/v1/access_token`, {
+    const res = await fetchWithTimeout(`${this.endpoint}/v1/access_token`, {
       method: "POST",
       body: params,
     });
 
     const data: QencodeAccessTokenResponse = await res.json();
+    // Qencode error codes: 0 = success, non-zero = failure.
     if (data.error) {
       throw new Error(`Qencode auth failed: ${JSON.stringify(data)}`);
     }
@@ -62,7 +78,7 @@ class QencodeClient {
     const token = await this.getAccessToken();
     const params = new URLSearchParams({ token });
 
-    const res = await fetch(`${this.endpoint}/v1/create_task`, {
+    const res = await fetchWithTimeout(`${this.endpoint}/v1/create_task`, {
       method: "POST",
       body: params,
     });
@@ -86,7 +102,7 @@ class QencodeClient {
       query: JSON.stringify(query),
     });
 
-    const res = await fetch(`${this.endpoint}/v1/start_encode2`, {
+    const res = await fetchWithTimeout(`${this.endpoint}/v1/start_encode2`, {
       method: "POST",
       body: params,
     });
@@ -104,7 +120,7 @@ class QencodeClient {
       task_tokens: JSON.stringify(taskTokens),
     });
 
-    const res = await fetch(`${this.endpoint}/v1/status`, {
+    const res = await fetchWithTimeout(`${this.endpoint}/v1/status`, {
       method: "POST",
       body: params,
     });

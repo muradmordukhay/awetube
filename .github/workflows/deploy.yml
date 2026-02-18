@@ -54,10 +54,15 @@ jobs:
           QENCODE_S3_BUCKET: ${{ secrets.QENCODE_S3_BUCKET }}
           NEXT_PUBLIC_QENCODE_PLAYER_LICENSE: ${{ secrets.NEXT_PUBLIC_QENCODE_PLAYER_LICENSE }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GIT_SHA: ${{ github.sha }}
         run: |
-          envsubst '$NEXTAUTH_SECRET $CALLBACK_SIGNING_SECRET $QENCODE_API_KEY $QENCODE_S3_BUCKET $NEXT_PUBLIC_QENCODE_PLAYER_LICENSE $RESEND_API_KEY' \
+          envsubst '$NEXTAUTH_SECRET $CALLBACK_SIGNING_SECRET $QENCODE_API_KEY $QENCODE_S3_BUCKET $NEXT_PUBLIC_QENCODE_PLAYER_LICENSE $RESEND_API_KEY $GIT_SHA' \
             < "${{ steps.spec.outputs.file }}" \
             | doctl apps update "${{ secrets.DO_APP_ID }}" --spec -
+
+      - name: Force rebuild
+        run: |
+          doctl apps create-deployment "${{ secrets.DO_APP_ID }}" --force-rebuild
 
       - name: Wait for deployment
         run: |
@@ -98,3 +103,29 @@ jobs:
           echo "Response: $RESPONSE"
           echo "$RESPONSE" | grep -q '"status":"ok"' || { echo "✗ Health check failed"; exit 1; }
           echo "✓ Health check passed"
+
+      - name: Verify deployed commit hash
+        if: success()
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          ENV="${{ github.event.inputs.environment || 'qa' }}"
+          if [ "$ENV" = "production" ]; then
+            URL="https://awetube.ai"
+          else
+            URL="https://qa.awetube.ai"
+          fi
+          echo "Checking deployed commit at $URL/api/version ..."
+          sleep 10
+          RESP=$(curl -sS "$URL/api/version?t=$EXPECTED_SHA" || true)
+          echo "Response: $RESP"
+          SHA=$(echo "$RESP" | jq -r '.sha // empty')
+          if [ -z "$SHA" ]; then
+            echo "✗ Could not read commit SHA from /api/version"
+            exit 1
+          fi
+          if [ "$SHA" != "$EXPECTED_SHA" ]; then
+            echo "✗ SHA mismatch. Expected $EXPECTED_SHA but got $SHA"
+            exit 1
+          fi
+          echo "✓ SHA verified: $SHA"

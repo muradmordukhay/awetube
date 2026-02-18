@@ -300,8 +300,9 @@ describe("GET /api/tags/:tagName/videos", () => {
     expect(res.status).toBe(200);
 
     const data = await res.json();
-    expect(data.videos).toHaveLength(1);
-    expect(data.videos[0].title).toBe("React Tutorial");
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0].title).toBe("React Tutorial");
     expect(data.nextCursor).toBeNull();
+    expect(data.hasMore).toBe(false);
   });
 });

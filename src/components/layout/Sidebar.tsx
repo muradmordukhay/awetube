@@ -18,7 +18,7 @@ const mainNavItems = [
 ];
 
 const libraryNavItems = [
-  { href: "/history", icon: Clock, label: "History" },
+  { href: "/history", icon: Clock, label: "His Story" },
   { href: "/liked", icon: ThumbsUp, label: "Liked videos" },
   { href: "/library", icon: FolderOpen, label: "Library" },
 ];

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  registerSchema,
+  emailLinkRequestSchema,
+  displayNameSchema,
   uploadInitiateSchema,
   startTranscodeSchema,
   callbackSchema,
@@ -11,67 +12,45 @@ import {
   searchSchema,
 } from "@/lib/validation";
 
-describe("registerSchema", () => {
+describe("emailLinkRequestSchema", () => {
   it("accepts valid input", () => {
-    const result = registerSchema.safeParse({
-      name: "John Doe",
+    const result = emailLinkRequestSchema.safeParse({
       email: "john@example.com",
-      password: "password123",
     });
     expect(result.success).toBe(true);
   });
 
-  it("trims whitespace from name and email", () => {
-    const result = registerSchema.safeParse({
-      name: "  John  ",
+  it("trims whitespace from email", () => {
+    const result = emailLinkRequestSchema.safeParse({
       email: "  john@example.com  ",
-      password: "password123",
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.name).toBe("John");
       expect(result.data.email).toBe("john@example.com");
     }
   });
 
-  it("rejects empty name", () => {
-    const result = registerSchema.safeParse({
-      name: "",
-      email: "john@example.com",
-      password: "password123",
-    });
-    expect(result.success).toBe(false);
-  });
-
   it("rejects invalid email", () => {
-    const result = registerSchema.safeParse({
-      name: "John",
+    const result = emailLinkRequestSchema.safeParse({
       email: "not-an-email",
-      password: "password123",
     });
     expect(result.success).toBe(false);
   });
 
-  it("rejects short password", () => {
-    const result = registerSchema.safeParse({
-      name: "John",
-      email: "john@example.com",
-      password: "short",
-    });
+  it("rejects missing email", () => {
+    const result = emailLinkRequestSchema.safeParse({});
     expect(result.success).toBe(false);
   });
+});
 
-  it("rejects password over 128 characters", () => {
-    const result = registerSchema.safeParse({
-      name: "John",
-      email: "john@example.com",
-      password: "a".repeat(129),
-    });
-    expect(result.success).toBe(false);
+describe("displayNameSchema", () => {
+  it("accepts valid display name", () => {
+    const result = displayNameSchema.safeParse({ displayName: "Jane Doe" });
+    expect(result.success).toBe(true);
   });
 
-  it("rejects missing fields", () => {
-    const result = registerSchema.safeParse({});
+  it("rejects empty display name", () => {
+    const result = displayNameSchema.safeParse({ displayName: "  " });
     expect(result.success).toBe(false);
   });
 });
@@ -104,11 +83,20 @@ describe("uploadInitiateSchema", () => {
 });
 
 describe("startTranscodeSchema", () => {
-  it("accepts valid input", () => {
+  it("accepts valid input with https URL", () => {
     const result = startTranscodeSchema.safeParse({
       videoId: "abc123",
       taskToken: "token123",
       tusUri: "https://upload.example.com/file",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid input with tus: URI", () => {
+    const result = startTranscodeSchema.safeParse({
+      videoId: "abc123",
+      taskToken: "token123",
+      tusUri: "tus:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     });
     expect(result.success).toBe(true);
   });
@@ -118,6 +106,15 @@ describe("startTranscodeSchema", () => {
       videoId: "abc123",
       taskToken: "token123",
       tusUri: "not-a-url",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects empty tusUri", () => {
+    const result = startTranscodeSchema.safeParse({
+      videoId: "abc123",
+      taskToken: "token123",
+      tusUri: "",
     });
     expect(result.success).toBe(false);
   });

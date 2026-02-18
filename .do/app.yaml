@@ -25,11 +25,11 @@ services:
     instance_size_slug: apps-s-1vcpu-1gb
     health_check:
       http_path: /api/health
-      initial_delay_seconds: 30
-      period_seconds: 30
+      initial_delay_seconds: 60
+      period_seconds: 15
       timeout_seconds: 10
       success_threshold: 1
-      failure_threshold: 5
+      failure_threshold: 10
     envs:
       # Auth.js host trust (required for non-Vercel deployments)
       - key: AUTH_TRUST_HOST
@@ -52,6 +52,22 @@ services:
         type: SECRET
       - key: NEXTAUTH_URL
         value: https://awetube.ai
+        type: GENERAL
+      - key: GIT_SHA
+        value: "${GIT_SHA}"
+        type: GENERAL
+      # Feature flags
+      - key: FF_AUTH_EMAIL_LINKS
+        value: "true"
+        type: GENERAL
+      - key: FF_AUTH_PASSWORDLESS_ONLY
+        value: "true"
+        type: GENERAL
+      - key: FF_AUTH_RATE_LIMIT
+        value: "true"
+        type: GENERAL
+      - key: FF_PROFILE_COMPLETION
+        value: "true"
         type: GENERAL
       # Security
       - key: CALLBACK_SIGNING_SECRET

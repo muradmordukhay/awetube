@@ -31,6 +31,8 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
   if (!video) notFound();
 
+  const licenseKey = process.env.NEXT_PUBLIC_QENCODE_PLAYER_LICENSE || "";
+
   // Increment view
   await db.video.update({
     where: { id: videoId },
@@ -98,6 +100,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
           subtitlesUrl={video.subtitlesUrl}
           videoId={video.id}
           initialProgress={initialProgress}
+          licenseKey={licenseKey}
         />
         <VideoDetails
           videoId={video.id}

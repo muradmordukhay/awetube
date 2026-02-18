@@ -25,6 +25,9 @@ const serverSchema = z.object({
   QENCODE_API_ENDPOINT: z.string().url().default("https://api.qencode.com"),
   QENCODE_S3_BUCKET: z.string().min(1, "QENCODE_S3_BUCKET is required"),
   QENCODE_S3_REGION: z.string().default("us-west"),
+  NEXT_PUBLIC_QENCODE_PLAYER_LICENSE: z
+    .string()
+    .min(1, "NEXT_PUBLIC_QENCODE_PLAYER_LICENSE is required"),
 
   // Optional — Rate limiting (Upstash Redis)
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
@@ -33,6 +36,10 @@ const serverSchema = z.object({
   // Optional
   RESEND_API_KEY: z.string().optional(),
   LOG_LEVEL: z.string().optional(),
+  GIT_SHA: z.string().optional(),
+
+  // App
+  NEXT_PUBLIC_APP_URL: z.string().url().min(1, "NEXT_PUBLIC_APP_URL is required"),
 });
 
 const parsed = serverSchema.safeParse(process.env);

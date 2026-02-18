@@ -54,7 +54,22 @@ export async function POST(req: NextRequest) {
       taskToken: task.task_token,
     });
   } catch (error) {
-    logger.error({ err: error }, "Upload initiate error");
+    const msg = error instanceof Error ? error.message : String(error);
+    logger.error({ err: error, detail: msg }, "Upload initiate error");
+
+    if (msg.includes("QENCODE_API_KEY") || msg.includes("is not set")) {
+      return NextResponse.json(
+        { error: "Video service is not configured" },
+        { status: 503 }
+      );
+    }
+    if (msg.includes("auth failed") || msg.includes("Unauthorized")) {
+      return NextResponse.json(
+        { error: "Video service authentication failed" },
+        { status: 502 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to initiate upload" },
       { status: 500 }

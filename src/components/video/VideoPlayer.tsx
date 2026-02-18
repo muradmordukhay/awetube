@@ -10,6 +10,7 @@ interface VideoPlayerProps {
   subtitlesUrl?: string | null;
   videoId?: string;
   initialProgress?: number;
+  licenseKey?: string;
 }
 
 export default function VideoPlayerWrapper({
@@ -21,6 +22,7 @@ export default function VideoPlayerWrapper({
   subtitlesUrl,
   videoId,
   initialProgress = 0,
+  licenseKey,
 }: VideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<QencodePlayerInstance | null>(null);
@@ -37,7 +39,7 @@ export default function VideoPlayerWrapper({
       if (typeof window.qPlayer === "undefined") return;
 
       playerRef.current = window.qPlayer(id, {
-        licenseKey: process.env.NEXT_PUBLIC_QENCODE_PLAYER_LICENSE || "",
+        licenseKey: licenseKey || "",
         videoSources: { src: source },
         ...(thumbnailUrl ? { poster: thumbnailUrl } : {}),
       });
@@ -96,7 +98,7 @@ export default function VideoPlayerWrapper({
       playerRef.current = null;
       videoElementRef.current = null;
     };
-  }, [hlsUrl, mp4Url, thumbnailUrl, videoId]);
+  }, [hlsUrl, mp4Url, thumbnailUrl, videoId, licenseKey]);
 
   // Keep playback progress tracking (uses the underlying <video> element)
   usePlaybackProgress({

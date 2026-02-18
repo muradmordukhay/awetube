@@ -17,13 +17,16 @@ process.env.CALLBACK_SIGNING_SECRET = "test-callback-secret-for-testing";
 process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
 process.env.QENCODE_API_KEY = "test-qencode-key";
 process.env.QENCODE_API_ENDPOINT = "https://api.qencode.com";
+process.env.NEXT_PUBLIC_QENCODE_PLAYER_LICENSE = "test-player-license";
 process.env.NEXTAUTH_SECRET = "test-nextauth-secret";
+process.env.GIT_SHA = "test-sha";
 
 // Mock Prisma client
 vi.mock("@/lib/db", () => {
   const db = {
     user: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
@@ -103,6 +106,12 @@ vi.mock("@/lib/db", () => {
       delete: vi.fn(),
       count: vi.fn().mockResolvedValue(0),
     },
+    loginToken: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+      updateMany: vi.fn(),
+    },
     passwordResetToken: {
       findUnique: vi.fn(),
       create: vi.fn(),
@@ -138,6 +147,7 @@ vi.mock("@/lib/qencode/client", () => ({
 // Mock email module
 vi.mock("@/lib/email", () => ({
   sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+  sendLoginLinkEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock rate limiting — keep real rateLimit/getClientIp/rateLimitResponse
@@ -153,6 +163,7 @@ vi.mock("@/lib/rate-limit", async (importOriginal) => {
     uploadLimiter: alwaysAllow,
     callbackLimiter: alwaysAllow,
     passwordResetLimiter: alwaysAllow,
+    emailLinkLimiter: alwaysAllow,
     searchLimiter: alwaysAllow,
     channelCreationLimiter: alwaysAllow,
   };
