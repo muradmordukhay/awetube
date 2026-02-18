@@ -5,10 +5,12 @@
  * consume. Returns a `tus:<file_uuid>` URI for use with start-transcode.
  *
  * Qencode TUS endpoint format: `${upload_url}/${task_token}`
- * After upload the Location header contains the file UUID as the last
- * path segment, which we prefix with "tus:" per Qencode convention.
+ * After upload, the Location header contains the file UUID as the last
+ * path segment: `https://storage.qencode.com/v1/upload_file/<token>/<uuid>`
+ * We prefix it with "tus:" per Qencode convention.
  */
 import * as tus from "tus-js-client";
+import { UPLOAD } from "@/lib/constants";
 
 export type TusUploadOptions = {
   file: File;
@@ -18,10 +20,28 @@ export type TusUploadOptions = {
 };
 
 export type TusUploadResult = {
+  /** File URI in format "tus:{fileUuid}" as returned by Qencode TUS upload. */
   tusUri: string;
 };
 
-const CHUNK_SIZE = 50 * 1024 * 1024; // 50 MB
+/**
+ * Extracts the file UUID from the TUS Location URL returned by Qencode.
+ *
+ * Expected format: `https://storage.qencode.com/v1/upload_file/<token>/<uuid>`
+ * Returns `tus:<uuid>` on success, or null if the UUID cannot be determined.
+ */
+export function extractUuidFromTusLocation(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    const uuid = segments[segments.length - 1];
+    return uuid ? `tus:${uuid}` : null;
+  } catch {
+    // Fallback for non-standard URL formats
+    const uuid = url.split("/").pop();
+    return uuid ? `tus:${uuid}` : null;
+  }
+}
 
 export function uploadFileViaTus({
   file,
@@ -36,8 +56,8 @@ export function uploadFileViaTus({
 
     const upload = new tus.Upload(file, {
       endpoint,
-      chunkSize: CHUNK_SIZE,
-      retryDelays: [0, 1000, 3000, 5000],
+      chunkSize: UPLOAD.CHUNK_SIZE,
+      retryDelays: UPLOAD.RETRY_DELAYS,
       metadata: {
         filename: file.name,
         filetype: file.type,
@@ -55,26 +75,13 @@ export function uploadFileViaTus({
           return;
         }
 
-        // Extract file UUID from the last path segment of the Location URL
-        // e.g. "https://storage.qencode.com/v1/upload_file/<token>/<uuid>"
-        try {
-          const parsed = new URL(url);
-          const segments = parsed.pathname.split("/").filter(Boolean);
-          const fileUuid = segments[segments.length - 1];
-          if (!fileUuid) {
-            reject(new Error("Could not extract file UUID from upload URL"));
-            return;
-          }
-          resolve({ tusUri: `tus:${fileUuid}` });
-        } catch {
-          // Fallback: split on "/" if URL parsing fails
-          const fileUuid = url.split("/").pop();
-          if (!fileUuid) {
-            reject(new Error("Could not extract file UUID from upload URL"));
-            return;
-          }
-          resolve({ tusUri: `tus:${fileUuid}` });
+        const tusUri = extractUuidFromTusLocation(url);
+        if (!tusUri) {
+          reject(new Error("Could not extract file UUID from upload URL"));
+          return;
         }
+
+        resolve({ tusUri });
       },
 
       onError(error: Error) {

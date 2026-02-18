@@ -27,21 +27,23 @@ const HTTPS_PATTERN =
  *
  * If the URL doesn't match a known Qencode pattern, it's returned as-is.
  */
-export function toCdnUrl(rawUrl: string): string {
+export function toCdnUrl(rawUrl: string | null | undefined): string | null {
+  if (!rawUrl) return null;
   // Try s3:// pattern first
-  let match = rawUrl.match(S3_PATTERN);
-  if (match) {
-    const [, region, bucket, path] = match;
+  const s3Match = rawUrl.match(S3_PATTERN);
+  if (s3Match) {
+    const [, region, bucket, path] = s3Match;
     return `https://${bucket}.media-storage.${region}.qencode.com/${path}`;
   }
 
   // Try https:// storage pattern
-  match = rawUrl.match(HTTPS_PATTERN);
-  if (match) {
-    const [, region, bucket, path] = match;
+  const httpsMatch = rawUrl.match(HTTPS_PATTERN);
+  if (httpsMatch) {
+    const [, region, bucket, path] = httpsMatch;
     return `https://${bucket}.media-storage.${region}.qencode.com/${path}`;
   }
 
   // Already a CDN URL or unrecognized format — return as-is
   return rawUrl;
 }
+

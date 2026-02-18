@@ -5,16 +5,14 @@ import { parseBody } from "@/lib/api-utils";
 import { verifyCallbackWithTimestamp } from "@/lib/callback-signature";
 import { callbackLimiter, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { notifySubscribersOfNewVideo } from "@/lib/notifications";
-import { toCdnUrl } from "@/lib/qencode/cdn";
+import { parseCallbackResults } from "@/lib/qencode/callback-parser";
+import { QENCODE } from "@/lib/constants";
 import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
-    const ip = getClientIp(req);
-    const rl = await callbackLimiter.check(ip);
-    if (!rl.success) return rateLimitResponse(rl.resetIn);
-
-    // Verify callback signature with replay protection
+    // Verify signature before rate limiting — invalid signatures must not
+    // consume rate limit slots (cheap check vs. expensive Redis round-trip).
     const url = new URL(req.url);
     const sig = url.searchParams.get("sig");
     const vid = url.searchParams.get("vid");
@@ -40,7 +38,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find the video by task token
+    // Rate limit after signature is confirmed valid.
+    const ip = getClientIp(req);
+    const rl = await callbackLimiter.check(ip);
+    if (!rl.success) return rateLimitResponse(rl.resetIn);
+
     const video = await db.video.findFirst({
       where: { qencodeTaskToken: task_token },
     });
@@ -50,31 +52,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
-    if (status === "completed") {
-      // Extract URLs from results
-      let hlsUrl: string | null = null;
-      let thumbnailUrl: string | null = null;
-      let duration: number | null = null;
-      let width: number | null = null;
-      let height: number | null = null;
-
-      if (videos && videos.length > 0) {
-        // Find HLS manifest
-        const hlsVideo = videos.find(
-          (v: { url: string; tag?: string }) =>
-            v.url.endsWith(".m3u8") || v.tag === "advanced_hls"
-        );
-        if (hlsVideo) {
-          hlsUrl = toCdnUrl(hlsVideo.url);
-          duration = hlsVideo.duration || null;
-          width = hlsVideo.width || null;
-          height = hlsVideo.height || null;
-        }
-      }
-
-      if (images && images.length > 0) {
-        thumbnailUrl = toCdnUrl(images[0].url);
-      }
+    if (status === QENCODE.STATUS_COMPLETED) {
+      const { hlsUrl, thumbnailUrl, duration, width, height } =
+        parseCallbackResults({ task_token, status, error, videos, images });
 
       const updatedVideo = await db.video.update({
         where: { id: video.id },
@@ -90,15 +70,20 @@ export async function POST(req: NextRequest) {
         include: { channel: { select: { userId: true } } },
       });
 
-      // Notify subscribers
       notifySubscribersOfNewVideo(
         updatedVideo.channelId,
         updatedVideo.id,
         updatedVideo.channel.userId
-      ).catch(() => {});
-    } else if (error || status === "error") {
+      ).catch((err) =>
+        logger.warn({ err }, "Failed to notify subscribers of new video")
+      );
+    } else if (
+      // Qencode error codes: 0 = success, non-zero = failure.
+      (error !== undefined && error !== QENCODE.ERROR_CODE_SUCCESS) ||
+      status === QENCODE.STATUS_ERROR
+    ) {
       logger.error(
-        { videoId: video.id, error_description },
+        { videoId: video.id, error, error_description },
         "Transcoding failed"
       );
       await db.video.update({

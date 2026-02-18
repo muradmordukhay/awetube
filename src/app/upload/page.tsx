@@ -91,8 +91,8 @@ export default function UploadPage() {
         throw new Error(data.error || "Failed to initiate upload");
       }
 
-      const { videoId: vid, uploadUrl, taskToken } = await initRes.json();
-      setVideoId(vid);
+      const { videoId, uploadUrl, taskToken } = await initRes.json();
+      setVideoId(videoId);
 
       // Step 2: Upload file via TUS resumable protocol
       const { promise: uploadPromise, abort } = uploadFileViaTus({
@@ -110,7 +110,7 @@ export default function UploadPage() {
       const transcodeRes = await fetch("/api/upload/start-transcode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoId: vid, taskToken, tusUri }),
+        body: JSON.stringify({ videoId, taskToken, tusUri }),
       });
 
       if (!transcodeRes.ok) {
