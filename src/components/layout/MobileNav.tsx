@@ -23,7 +23,7 @@ interface MobileNavProps {
 const navItems = [
   { href: "/", icon: Home, label: "Home" },
   { href: "/trending", icon: Flame, label: "Trending" },
-  { href: "/history", icon: Clock, label: "History" },
+  { href: "/history", icon: Clock, label: "His Story" },
   { href: "/liked", icon: ThumbsUp, label: "Liked videos" },
   { href: "/library", icon: FolderOpen, label: "Library" },
 ];
