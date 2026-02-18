@@ -10,8 +10,8 @@ export async function PATCH(req: Request) {
   try {
     if (!featureFlags.profileCompletion) {
       return NextResponse.json(
-        { error: "Profile completion is disabled" },
-        { status: 404 }
+        { error: "Feature not available" },
+        { status: 403 }
       );
     }
 

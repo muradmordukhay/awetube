@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { JWT } from "next-auth/jwt";
 import { jwtCallback } from "@/lib/auth-callbacks";
 import { db } from "@/lib/db";
 
@@ -11,7 +12,7 @@ beforeEach(() => {
 
 describe("jwtCallback", () => {
   it("populates token from user on initial sign-in", async () => {
-    const token = {};
+    const token = {} as JWT;
     const user = {
       id: "user-1",
       channelId: "ch-1",
@@ -103,7 +104,7 @@ describe("jwtCallback", () => {
   });
 
   it("does not query DB on trigger=update without token.id", async () => {
-    const token = { needsDisplayName: true };
+    const token = { needsDisplayName: true } as JWT;
 
     const result = await jwtCallback({ token, trigger: "update" });
 

@@ -19,8 +19,8 @@ export async function POST(req: Request) {
   try {
     if (!featureFlags.authEmailLinks) {
       return NextResponse.json(
-        { error: "Email link sign-in is disabled" },
-        { status: 404 }
+        { error: "Feature not available" },
+        { status: 403 }
       );
     }
 
