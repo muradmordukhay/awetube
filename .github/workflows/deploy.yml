@@ -87,8 +87,8 @@ jobs:
             fi
             if [ "$STATUS" = "ERROR" ] || [ "$STATUS" = "CANCELED" ]; then
               echo "✗ Deployment failed with status: $STATUS"
-              echo "--- Build logs (last 30 lines) ---"
-              doctl apps logs "${{ secrets.DO_APP_ID }}" --type=build | tail -30
+              echo "--- Runtime logs (last 30 lines) ---"
+              doctl apps logs "${{ secrets.DO_APP_ID }}" --type=run | tail -30
               exit 1
             fi
             sleep 15
