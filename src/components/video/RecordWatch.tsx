@@ -8,7 +8,7 @@ export default function RecordWatch({ videoId }: { videoId: string }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ videoId }),
-    }).catch(() => {});
+    }).catch((err) => console.warn("Failed to record watch history", err));
   }, [videoId]);
 
   return null;

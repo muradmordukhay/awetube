@@ -19,7 +19,7 @@ export default function NotificationBell() {
       fetch("/api/notifications/unread-count")
         .then((r) => r.json())
         .then((data) => setUnreadCount(data.count))
-        .catch(() => {});
+        .catch((err) => console.warn("Failed to poll unread count", err));
     }
 
     // Initial fetch via timeout (avoids synchronous setState in effect)

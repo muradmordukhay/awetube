@@ -38,7 +38,7 @@ export default function SaveToPlaylistDialog({
     fetch("/api/playlists")
       .then((r) => r.json())
       .then((data) => setPlaylists(data))
-      .catch(() => {})
+      .catch((err) => console.warn("Failed to load playlists", err))
       .finally(() => setLoading(false));
   }, [open]);
 

@@ -54,8 +54,9 @@ export async function GET(
     const items = hasMore ? videoTags.slice(0, limit) : videoTags;
 
     return NextResponse.json({
-      videos: items.map((vt) => vt.video),
+      items: items.map((vt) => vt.video),
       nextCursor: hasMore ? items[items.length - 1].video.id : null,
+      hasMore,
     });
   } catch (error) {
     logger.error({ err: error }, "Error listing videos by tag");

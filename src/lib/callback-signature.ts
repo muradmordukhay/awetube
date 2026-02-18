@@ -12,38 +12,6 @@ function getSecret(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Legacy functions (without timestamp) — kept for backward compatibility
-// ---------------------------------------------------------------------------
-
-/** @deprecated Use signCallbackUrlWithTimestamp instead */
-export function signCallbackUrl(
-  videoId: string,
-  taskToken: string
-): string {
-  const hmac = crypto.createHmac("sha256", getSecret());
-  hmac.update(`${videoId}:${taskToken}`);
-  return hmac.digest("hex");
-}
-
-/** @deprecated Use verifyCallbackWithTimestamp instead */
-export function verifyCallbackSignature(
-  videoId: string,
-  taskToken: string,
-  signature: string
-): boolean {
-  const expected = signCallbackUrl(videoId, taskToken);
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(expected, "hex"),
-      Buffer.from(signature, "hex")
-    );
-  } catch {
-    // timingSafeEqual throws if buffers have different lengths
-    return false;
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Timestamp-aware functions (replay protection)
 // ---------------------------------------------------------------------------
 

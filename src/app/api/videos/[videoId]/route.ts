@@ -43,7 +43,7 @@ export async function GET(
         where: { id: videoId },
         data: { viewCount: { increment: 1 } },
       })
-      .catch(() => {});
+      .catch((err) => logger.warn({ err }, "Failed to increment view count"));
 
     return NextResponse.json(video);
   } catch (error) {

@@ -51,6 +51,11 @@ export async function sendLoginLinkEmail(
 ): Promise<void> {
   const loginUrl = `${APP_URL}/verify?token=${token}`;
 
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`\n🔗 Login URL: ${loginUrl}\n`);
+    return;
+  }
+
   await getResendClient().emails.send({
     from: FROM_EMAIL,
     to: email,
